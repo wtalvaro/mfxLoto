@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
@@ -27,9 +28,11 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableColumn.CellDataFeatures;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
@@ -41,8 +44,13 @@ import javafx.stage.StageStyle;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.input.BOMInputStream;
 import weka.core.Instances;
+import weka.core.converters.ArffLoader;
+import weka.core.converters.ArffSaver;
+import weka.core.converters.CSVLoader;
+import weka.core.converters.CSVSaver;
 import weka.core.converters.ConverterUtils;
 
 public class FXMLController implements Initializable {
@@ -67,20 +75,24 @@ public class FXMLController implements Initializable {
     private TableView tableViewARFF;
 
     private Integer num = 0;
-    private File selectedFile;
+    private File selectFileARFF;
+    private File selectFileCSV;
     private ObservableList<ObservableList> data = FXCollections.observableArrayList();
     private FileChooser fileChooser;
     private Reader in;
     private Dialog dialog;
-    private Label label;
+    private Label labelTitle;
+    private TextArea textExpansion;
     private TextField textField;
     private GridPane expContent;
+    private GridPane mainContent;
     private Optional<ButtonType> result;
+    private ScrollPane scroll;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         // TODO
-        List<String> values = Arrays.asList("Abrir ARFF");
+        List<String> values = Arrays.asList("Abrir ARFF", "Converter para ARFF");
         listARFF.setItems(FXCollections.observableList(values));
         listARFF.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
             @Override
@@ -97,10 +109,10 @@ public class FXMLController implements Initializable {
                                     new FileChooser.ExtensionFilter("ARFF File", "*.arff")
                             );
 
-                            selectedFile = fileChooser.showOpenDialog(listARFF.getScene().getWindow());
-                            if (selectedFile != null) {
+                            selectFileARFF = fileChooser.showOpenDialog(listARFF.getScene().getWindow());
+                            if (selectFileARFF != null) {
                                 try {
-                                    ConverterUtils.DataSource source = new ConverterUtils.DataSource(selectedFile.getAbsolutePath());
+                                    ConverterUtils.DataSource source = new ConverterUtils.DataSource(selectFileARFF.getAbsolutePath());
                                     Instances dataset = source.getDataSet();
                                     TableColumn[] root = new TableColumn[dataset.numAttributes()];
                                     tableViewARFF.getColumns().clear();
@@ -138,6 +150,38 @@ public class FXMLController implements Initializable {
                             }
                             break;
 
+                        case "Converter para ARFF":
+                            fileChooser = new FileChooser();
+                            fileChooser.setTitle("Salvar ARFF");
+                            fileChooser.getExtensionFilters().addAll(
+                                    new FileChooser.ExtensionFilter("ARFF File", "*.arff")
+                            );
+
+                            selectFileARFF = fileChooser.showSaveDialog(listARFF.getScene().getWindow());
+                            if (selectFileCSV != null) {
+                                //Load CSV File
+                                CSVLoader loader = new CSVLoader();
+                                Instances dataset = null;
+
+                                try {
+                                    loader.setSource(new File(selectFileCSV.getAbsolutePath()));
+                                    dataset = loader.getDataSet();
+                                } catch (IOException ex) {
+                                    Logger.getLogger(FXMLController.class.getName()).log(Level.SEVERE, null, ex);
+                                }
+
+                                //Save ARFF File
+                                ArffSaver saver = new ArffSaver();
+                                saver.setInstances(dataset);
+                                try {
+                                    saver.setFile(new File(selectFileARFF.getAbsolutePath()));
+                                    saver.writeBatch();
+                                } catch (IOException ex) {
+                                    Logger.getLogger(FXMLController.class.getName()).log(Level.SEVERE, null, ex);
+                                }
+                            }
+                            break;
+
                         default:
                             break;
                     }
@@ -145,11 +189,14 @@ public class FXMLController implements Initializable {
             }
         });
 
-        values = Arrays.asList("Abrir CSV", "Abrir Excel CSV");
+        values = Arrays.asList("Abrir CSV", "Abrir Excel CSV", "Converter para CSV");
+
         listCSV.setItems(FXCollections.observableList(values));
-        listCSV.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+        listCSV.addEventHandler(MouseEvent.MOUSE_CLICKED,
+                new EventHandler<MouseEvent>() {
             @Override
-            public void handle(MouseEvent event) {
+            public void handle(MouseEvent event
+            ) {
                 EventTarget eventTarget = event.getTarget();
                 if (eventTarget instanceof ListCell) {
                     ListCell cell = (ListCell) eventTarget;
@@ -162,9 +209,9 @@ public class FXMLController implements Initializable {
                                 fileChooser.getExtensionFilters().addAll(
                                         new FileChooser.ExtensionFilter("CSV File", "*.csv")
                                 );
-                                selectedFile = fileChooser.showOpenDialog(listARFF.getScene().getWindow());
-                                if (selectedFile != null) {
-                                    in = new FileReader(selectedFile.getAbsolutePath());
+                                selectFileCSV = fileChooser.showOpenDialog(listARFF.getScene().getWindow());
+                                if (selectFileCSV != null) {
+                                    in = new FileReader(selectFileCSV.getAbsolutePath());
                                     CSVParser parser = new CSVParser(in, CSVFormat.DEFAULT.withFirstRecordAsHeader());
                                     Map<String, Integer> map = parser.getHeaderMap();
                                     TableColumn[] root = new TableColumn[map.entrySet().size()];
@@ -186,7 +233,7 @@ public class FXMLController implements Initializable {
                                         i++;
                                     }
 
-                                    in = new FileReader(selectedFile.getAbsolutePath());
+                                    in = new FileReader(selectFileCSV.getAbsolutePath());
                                     Iterable<CSVRecord> records = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(in);
                                     for (CSVRecord record : records) {
                                         ObservableList<String> row = FXCollections.observableArrayList();
@@ -210,9 +257,9 @@ public class FXMLController implements Initializable {
                                 fileChooser.getExtensionFilters().addAll(
                                         new FileChooser.ExtensionFilter("CSV File", "*.csv")
                                 );
-                                selectedFile = fileChooser.showOpenDialog(listARFF.getScene().getWindow());
-                                if (selectedFile != null) {
-                                    final URL url = selectedFile.toURI().toURL();
+                                selectFileCSV = fileChooser.showOpenDialog(listARFF.getScene().getWindow());
+                                if (selectFileCSV != null) {
+                                    final URL url = selectFileCSV.toURI().toURL();
                                     final Reader reader = new InputStreamReader(new BOMInputStream(url.openStream()), "UTF-8");
                                     CSVParser parser = new CSVParser(reader, CSVFormat.EXCEL.withHeader());
                                     Map<String, Integer> map = parser.getHeaderMap();
@@ -250,16 +297,50 @@ public class FXMLController implements Initializable {
                                 Logger.getLogger(FXMLController.class.getName()).log(Level.SEVERE, null, ex);
                             }
                             break;
+
+                        case "Converter para CSV":
+                            fileChooser = new FileChooser();
+                            fileChooser.setTitle("Salvar CSV");
+                            fileChooser.getExtensionFilters().addAll(
+                                    new FileChooser.ExtensionFilter("CSV File", "*.csv")
+                            );
+
+                            selectFileCSV = fileChooser.showSaveDialog(listARFF.getScene().getWindow());
+                            if (selectFileARFF != null) {
+                                ArffLoader loader = new ArffLoader();
+                                Instances dataset = null;
+                                try {
+                                    loader.setSource(new File(selectFileARFF.getAbsolutePath()));
+                                    dataset = loader.getDataSet();
+                                } catch (IOException ex) {
+                                    Logger.getLogger(FXMLController.class.getName()).log(Level.SEVERE, null, ex);
+                                }
+
+                                //Save CSV
+                                CSVSaver saver = new CSVSaver();
+                                saver.setInstances(dataset);
+                                try {
+                                    saver.setFile(new File(selectFileCSV.getAbsolutePath()));
+                                    saver.writeBatch();
+                                } catch (IOException ex) {
+                                    Logger.getLogger(FXMLController.class.getName()).log(Level.SEVERE, null, ex);
+                                }
+                            }
+                            break;
+
                         default:
                             break;
                     }
                 }
             }
-        });
+        }
+        );
 
-        values = Arrays.asList("Abrir URL");
+        values = Arrays.asList("Salvar de URL");
+
         listURL.setItems(FXCollections.observableList(values));
-        listURL.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+        listURL.addEventHandler(MouseEvent.MOUSE_CLICKED,
+                new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event
             ) {
@@ -267,8 +348,57 @@ public class FXMLController implements Initializable {
                 if (eventTarget instanceof ListCell) {
                     ListCell cell = (ListCell) eventTarget;
                     switch (cell.getText()) {
-                        case "Abrir URL":
+                        case "Salvar de URL":
+                            dialog = new Dialog();
+                            dialog.setTitle("Ler Instâncias");
+                            dialog.initStyle(StageStyle.UTILITY);
+                            dialog.initOwner(listARFF.getScene().getWindow());
+                            dialog.initModality(Modality.WINDOW_MODAL);
+                            dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+                            labelTitle = new Label("Entre com a fonte URL:");
+
+                            textField = new TextField();
+                            textField.setMaxWidth(Double.MAX_VALUE);
+                            textField.setMaxHeight(Double.MAX_VALUE);
+                            GridPane.setVgrow(textField, Priority.ALWAYS);
+                            GridPane.setHgrow(textField, Priority.ALWAYS);
+
+                            mainContent = new GridPane();
+                            mainContent.setHgap(10);
+                            mainContent.setVgap(10);
+                            mainContent.setMaxWidth(Double.MAX_VALUE);
+                            mainContent.add(labelTitle, 0, 0);
+                            mainContent.add(textField, 0, 1);
+                            mainContent.setPrefWidth(480);
+
+                            dialog.getDialogPane().setContent(mainContent);
+                            result = dialog.showAndWait();
+                            if (result.get() == ButtonType.OK) {
+                                try {
+                                    URL url = new URL(textField.getText());
+                                    fileChooser = new FileChooser();
+                                    fileChooser.setTitle("Salvar ARFF");
+                                    fileChooser.getExtensionFilters().addAll(
+                                            new FileChooser.ExtensionFilter("ARFF File", "*.arff")
+                                    );
+
+                                    selectFileARFF = fileChooser.showSaveDialog(listARFF.getScene().getWindow());
+                                    if (selectFileARFF != null) {
+                                        File destination = new File(selectFileARFF.getAbsolutePath());
+                                        FileUtils.copyURLToFile(url, destination);
+                                    }
+                                } catch (MalformedURLException ex) {
+                                    Logger.getLogger(FXMLController.class.getName()).log(Level.SEVERE, null, ex);
+                                } catch (IOException ex) {
+                                    Logger.getLogger(FXMLController.class.getName()).log(Level.SEVERE, null, ex);
+                                }
+                                System.out.println("OK");
+                            } else if (result.get() == ButtonType.CANCEL) {
+                                System.out.println("CANCEL");
+                            }
                             break;
+
                         default:
                             break;
                     }
@@ -278,9 +408,11 @@ public class FXMLController implements Initializable {
         }
         );
 
-        values = Arrays.asList("Microsoft SQL", "Oracle DB", "IBM DB2", "MySQL", "PostgreSQL", "SQLite");
+        values = Arrays.asList("HSQL", "MSACCESS", "MSSQLSERVER", "MSSQLSERVER2005", "MySQL", "ODBC", "ORACLE", "POSTGRESQL", "SQLITE3");
+
         listDB.setItems(FXCollections.observableList(values));
-        listDB.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+        listDB.addEventHandler(MouseEvent.MOUSE_CLICKED,
+                new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event
             ) {
@@ -324,8 +456,10 @@ public class FXMLController implements Initializable {
                 "Nominal To Binary",
                 "Partition MemberShip"
         );
+
         listFilterSupAttr.setItems(FXCollections.observableList(values));
-        listFilterSupAttr.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+        listFilterSupAttr.addEventHandler(MouseEvent.MOUSE_CLICKED,
+                new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event
             ) {
@@ -341,10 +475,8 @@ public class FXMLController implements Initializable {
                             dialog.initModality(Modality.WINDOW_MODAL);
                             dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-                            label = new Label("Um filtro para adicionar a classificação, a distribuição de classe e um sinalizador de erro para um conjunto de dados com um classificador.\n"
-                                    + "O classificador é treinado nos próprios dados ou fornecido como modelo serializado.\n"
-                                    + "\n"
-                                    + "As opções válidas são:\n"
+                            labelTitle = new Label("Um filtro para adicionar a classificação, a distribuição de classe e um sinalizador de erro para um conjunto de dados com um classificador.");
+                            textExpansion = new TextArea("As opções válidas são:\n"
                                     + " -D\n"
                                     + "  Activa a saída de informações de depuração.\n"
                                     + " \n"
@@ -373,20 +505,35 @@ public class FXMLController implements Initializable {
                                     + "  Uma classificação errada (para classes numéricas é o numérico diferença).\n"
                                     + "  (Padrão: desativado)");
 
-                            textField = new TextField();
+                            textExpansion.setEditable(false);
+                            textExpansion.setWrapText(true);
+                            textExpansion.setMaxWidth(Double.MAX_VALUE);
+                            textExpansion.setMaxHeight(Double.MAX_VALUE);
 
+                            textField = new TextField();
                             textField.setMaxWidth(Double.MAX_VALUE);
                             textField.setMaxHeight(Double.MAX_VALUE);
                             GridPane.setVgrow(textField, Priority.ALWAYS);
                             GridPane.setHgrow(textField, Priority.ALWAYS);
+                            GridPane.setVgrow(textExpansion, Priority.ALWAYS);
+                            GridPane.setHgrow(textExpansion, Priority.ALWAYS);
 
                             expContent = new GridPane();
                             expContent.setHgap(10);
                             expContent.setVgap(10);
                             expContent.setMaxWidth(Double.MAX_VALUE);
-                            expContent.add(label, 0, 0);
-                            expContent.add(textField, 0, 1);
-                            dialog.getDialogPane().setContent(expContent);
+                            expContent.add(textExpansion, 0, 0);
+                            expContent.setPrefHeight(240);
+
+                            mainContent = new GridPane();
+                            mainContent.setHgap(10);
+                            mainContent.setVgap(10);
+                            mainContent.setMaxWidth(Double.MAX_VALUE);
+                            mainContent.add(labelTitle, 0, 0);
+                            mainContent.add(textField, 0, 1);
+
+                            dialog.getDialogPane().setContent(mainContent);
+                            dialog.getDialogPane().setExpandableContent(expContent);
                             result = dialog.showAndWait();
                             if (result.get() == ButtonType.OK) {
                                 System.out.println("OK");
@@ -403,9 +550,8 @@ public class FXMLController implements Initializable {
                             dialog.initModality(Modality.WINDOW_MODAL);
                             dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-                            label = new Label("Um filtro de atributos supervisionados que pode ser usado para selecionar atributos. É muito flexível e permite combinar vários métodos de busca e avaliação.\n"
-                                    + "\n"
-                                    + "As opções válidas são:\n"
+                            labelTitle = new Label("Um filtro de atributos supervisionados que pode ser usado para selecionar atributos.");
+                            textExpansion = new TextArea("As opções válidas são:\n"
                                     + " -S <\"Nome da classe de pesquisa [opções de pesquisa]\">\n"
                                     + "  Configura o método de busca para avaliadores de subconjuntos.\n"
                                     + "  por exemplo. -S \"weka.attributeSelection.BestFirst -S 8\"\n"
@@ -435,23 +581,37 @@ public class FXMLController implements Initializable {
                                     + " \n"
                                     + " -S <num>\n"
                                     + "  Tamanho do cache de pesquisa para subconjuntos avaliados.\n"
-                                    + "  Expresso como um múltiplo do número de\n"
-                                    + "  Atributos no conjunto de dados. (Padrão = 1)");
+                                    + "  Expresso como um múltiplo do número de Atributos no conjunto de dados. (Padrão = 1)");
+
+                            textExpansion.setEditable(false);
+                            textExpansion.setWrapText(true);
+                            textExpansion.setMaxWidth(Double.MAX_VALUE);
+                            textExpansion.setMaxHeight(Double.MAX_VALUE);
 
                             textField = new TextField();
-
                             textField.setMaxWidth(Double.MAX_VALUE);
                             textField.setMaxHeight(Double.MAX_VALUE);
                             GridPane.setVgrow(textField, Priority.ALWAYS);
                             GridPane.setHgrow(textField, Priority.ALWAYS);
+                            GridPane.setVgrow(textExpansion, Priority.ALWAYS);
+                            GridPane.setHgrow(textExpansion, Priority.ALWAYS);
 
                             expContent = new GridPane();
                             expContent.setHgap(10);
                             expContent.setVgap(10);
                             expContent.setMaxWidth(Double.MAX_VALUE);
-                            expContent.add(label, 0, 0);
-                            expContent.add(textField, 0, 1);
-                            dialog.getDialogPane().setContent(expContent);
+                            expContent.add(textExpansion, 0, 0);
+                            expContent.setPrefHeight(240);
+
+                            mainContent = new GridPane();
+                            mainContent.setHgap(10);
+                            mainContent.setVgap(10);
+                            mainContent.setMaxWidth(Double.MAX_VALUE);
+                            mainContent.add(labelTitle, 0, 0);
+                            mainContent.add(textField, 0, 1);
+
+                            dialog.getDialogPane().setContent(mainContent);
+                            dialog.getDialogPane().setExpandableContent(expContent);
                             result = dialog.showAndWait();
                             if (result.get() == ButtonType.OK) {
                                 System.out.println("OK");
@@ -468,11 +628,8 @@ public class FXMLController implements Initializable {
                             dialog.initModality(Modality.WINDOW_MODAL);
                             dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-                            label = new Label("Converte os valores dos atributos nominais e / ou numéricos em probabilidades condicionais de classe. Se houver k classes, então k novos atributos são criados para cada um dos originais, dando pr (att val | class k).\n"
-                                    + "Pode ser útil para converter atributos nominais com muitos valores distintos em algo mais gerenciável para esquemas de aprendizagem que não podem lidar com atributos nominais (ao contrário de criar atributos de indicadores binários).\n"
-                                    + "Para atributos nominais, o usuário pode especificar os valores de número acima dos quais um atributo será convertido por este método.\n"
-                                    + "\n"
-                                    + "As opções válidas são:\n"
+                            labelTitle = new Label("Converte os valores dos atributos nominais e / ou numéricos em probabilidades condicionais de classe.");
+                            textExpansion = new TextArea("As opções válidas são:\n"
                                     + " -N\n"
                                     + "  Não aplique essa transformação em atributos numéricos\n"
                                     + "\n"
@@ -491,20 +648,35 @@ public class FXMLController implements Initializable {
                                     + "  Se configurado, os recursos do filtro não são verificados antes do filtro ser construído\n"
                                     + "  (Use com cuidado).");
 
-                            textField = new TextField();
+                            textExpansion.setEditable(false);
+                            textExpansion.setWrapText(true);
+                            textExpansion.setMaxWidth(Double.MAX_VALUE);
+                            textExpansion.setMaxHeight(Double.MAX_VALUE);
 
+                            textField = new TextField();
                             textField.setMaxWidth(Double.MAX_VALUE);
                             textField.setMaxHeight(Double.MAX_VALUE);
                             GridPane.setVgrow(textField, Priority.ALWAYS);
                             GridPane.setHgrow(textField, Priority.ALWAYS);
+                            GridPane.setVgrow(textExpansion, Priority.ALWAYS);
+                            GridPane.setHgrow(textExpansion, Priority.ALWAYS);
 
                             expContent = new GridPane();
                             expContent.setHgap(10);
                             expContent.setVgap(10);
                             expContent.setMaxWidth(Double.MAX_VALUE);
-                            expContent.add(label, 0, 0);
-                            expContent.add(textField, 0, 1);
-                            dialog.getDialogPane().setContent(expContent);
+                            expContent.add(textExpansion, 0, 0);
+                            expContent.setPrefHeight(240);
+
+                            mainContent = new GridPane();
+                            mainContent.setHgap(10);
+                            mainContent.setVgap(10);
+                            mainContent.setMaxWidth(Double.MAX_VALUE);
+                            mainContent.add(labelTitle, 0, 0);
+                            mainContent.add(textField, 0, 1);
+
+                            dialog.getDialogPane().setContent(mainContent);
+                            dialog.getDialogPane().setExpandableContent(expContent);
                             result = dialog.showAndWait();
                             if (result.get() == ButtonType.OK) {
                                 System.out.println("OK");
@@ -527,8 +699,10 @@ public class FXMLController implements Initializable {
                 "Spread Subsample",
                 "Stratified Remove Folds"
         );
+
         listFilterSupInst.setItems(FXCollections.observableList(values));
-        listFilterSupInst.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+        listFilterSupInst.addEventHandler(MouseEvent.MOUSE_CLICKED,
+                new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event
             ) {
@@ -554,8 +728,10 @@ public class FXMLController implements Initializable {
                 "Espelhar Subamostra",
                 "Stratified Remove Folds"
         );
+
         listFilterNSupAttr.setItems(FXCollections.observableList(values));
-        listFilterNSupAttr.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+        listFilterNSupAttr.addEventHandler(MouseEvent.MOUSE_CLICKED,
+                new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event
             ) {
@@ -580,8 +756,10 @@ public class FXMLController implements Initializable {
                 "Espelhar Subamostra",
                 "Stratified Remove Folds"
         );
+
         listFilterNSupInst.setItems(FXCollections.observableList(values));
-        listFilterNSupInst.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+        listFilterNSupInst.addEventHandler(MouseEvent.MOUSE_CLICKED,
+                new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event
             ) {
