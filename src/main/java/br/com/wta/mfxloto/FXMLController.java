@@ -1,5 +1,6 @@
 package br.com.wta.mfxloto;
 
+import com.jfoenix.controls.JFXPasswordField;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -8,6 +9,12 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -23,11 +30,14 @@ import javafx.event.EventHandler;
 import javafx.event.EventTarget;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.HPos;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableColumn.CellDataFeatures;
@@ -36,6 +46,7 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.util.Callback;
 import javafx.stage.FileChooser;
@@ -87,7 +98,7 @@ public class FXMLController implements Initializable {
     private GridPane expContent;
     private GridPane mainContent;
     private Optional<ButtonType> result;
-    private ScrollPane scroll;
+    private Connection connection;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -408,7 +419,7 @@ public class FXMLController implements Initializable {
         }
         );
 
-        values = Arrays.asList("HSQL", "MSACCESS", "MSSQLSERVER", "MSSQLSERVER2005", "MySQL", "ODBC", "ORACLE", "POSTGRESQL", "SQLITE3");
+        values = Arrays.asList("HSQL", "MSACCESS", "MSSQLSERVER", "MSSQLSERVER2005", "MySQL", "ODBC", "POSTGRESQL");
 
         listDB.setItems(FXCollections.observableList(values));
         listDB.addEventHandler(MouseEvent.MOUSE_CLICKED,
@@ -418,26 +429,190 @@ public class FXMLController implements Initializable {
             ) {
                 EventTarget eventTarget = event.getTarget();
                 if (eventTarget instanceof ListCell) {
+                    TableView tableViewSQL = new TableView();
+                    ObservableList<ObservableList> dataSQL = FXCollections.observableArrayList();
                     ListCell cell = (ListCell) eventTarget;
+                    tableViewSQL.getColumns().clear();
+                    dataSQL.clear();
+
+                    TextField textDriverName = new TextField("com.mysql.jdbc.Driver");
+                    TextField textServerName = new TextField("192.168.1.100:3306");
+                    TextField textDataBase = new TextField("escola");
+                    TextField textUserName = new TextField("wagner");
+                    TextField textQuery = new TextField();
+                    PasswordField passwordSenha = new JFXPasswordField();
+                    Label labelDriver = new Label("Driver:");
+                    Label labelServer = new Label("Servidor:");
+                    Label labelDataBase = new Label("Banco de Dados:");
+                    Label labelUser = new Label("Usuário:");
+                    Label labelPassword = new Label("Senha:");
+                    Label labelQuery = new Label("Query:");
+                    Label labelEstadoConexao = new Label("Desconectado");
+                    Button buttonTestaCon = new Button("Testar Conexão");
+                    Button buttonSQL = new Button("Executar Query");
+
                     switch (cell.getText()) {
-                        case "Microsoft SQL":
-
+                        case "HSQL":
                             break;
 
-                        case "Oracle DB":
-
-                            break;
-                        case "IBM DB2":
+                        case "MSACCESS":
                             break;
 
-                        case "MySQL":
+                        case "MSSQLSERVER":
                             break;
 
-                        case "PostgreSQL":
+                        case "MSSQLSERVER2005":
                             break;
 
-                        case "SQLite":
+                        case "MySQL": {
+                            dialog = new Dialog();
+                            dialog.setTitle("Conexão MySQL");
+                            dialog.initStyle(StageStyle.UTILITY);
+                            dialog.initOwner(listARFF.getScene().getWindow());
+                            dialog.initModality(Modality.WINDOW_MODAL);
+                            dialog.setResizable(true);
+                            dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+                            
+                            buttonTestaCon.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+                                @Override
+                                public void handle(MouseEvent event) {
+                                    try {
+                                        Class.forName(textDriverName.getText());
+                                        String url = "jdbc:mysql://" + textServerName.getText() + "/" + textDataBase.getText() + "?useLegacyDatetimeCode=false&serverTimezone=America/New_York";
+                                        connection = DriverManager.getConnection(url, textUserName.getText(), passwordSenha.getText());
+
+                                        if (connection != null) {
+                                            labelEstadoConexao.setText("Conectado");
+                                        } else {
+                                            labelEstadoConexao.setText("Desconectado");
+                                        }
+                                    } catch (ClassNotFoundException ex) {
+                                        Logger.getLogger(FXMLController.class.getName()).log(Level.SEVERE, null, ex);
+                                    } catch (SQLException ex) {
+                                        Logger.getLogger(FXMLController.class.getName()).log(Level.SEVERE, null, ex);
+                                    }
+                                }
+
+                            });
+
+                            buttonSQL.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+                                @Override
+                                public void handle(MouseEvent event) {
+                                    tableViewSQL.getColumns().clear();
+                                    dataSQL.clear();
+                                    try {
+                                        Statement stm = connection.createStatement();
+                                        ResultSet rs = stm.executeQuery(textQuery.getText());
+                                        ResultSetMetaData rsmd = rs.getMetaData();
+                                        TableColumn[] root = new TableColumn[rsmd.getColumnCount()];
+                                        for (int i = 0; i < root.length; i++) {
+                                            final int j = i;
+                                            int columnName = i + 1;
+                                            root[i] = new TableColumn(rsmd.getColumnName(columnName));
+                                            root[i].setMinWidth(100);
+                                            root[i].setMinWidth(100);
+                                            root[i].setCellValueFactory(new Callback<CellDataFeatures<ObservableList, String>, ObservableValue<String>>() {
+                                                @Override
+                                                public ObservableValue<String> call(CellDataFeatures<ObservableList, String> param) {
+                                                    return new SimpleStringProperty(param.getValue().get(j).toString());
+                                                }
+                                            });
+                                            tableViewSQL.getColumns().add(root[i]);
+                                        }
+                                        while (rs.next()) {
+                                            ObservableList<String> row = FXCollections.observableArrayList();
+                                            for (int j = 0; j < rsmd.getColumnCount(); j++) {
+                                                row.add(rs.getString(j + 1));
+                                            }
+                                            dataSQL.add(row);
+                                        }
+                                        tableViewSQL.setItems(dataSQL);
+
+                                    } catch (SQLException ex) {
+                                        Logger.getLogger(FXMLController.class.getName()).log(Level.SEVERE, null, ex);
+                                    }
+                                }
+                            });
+
+                            tableViewSQL.setPrefWidth(640);
+
+                            textDataBase.setMaxWidth(Double.MAX_VALUE);
+                            textDataBase.setMaxHeight(Double.MAX_VALUE);
+                            textDriverName.setMaxWidth(Double.MAX_VALUE);
+                            textDriverName.setMaxHeight(Double.MAX_VALUE);
+                            textServerName.setMaxWidth(Double.MAX_VALUE);
+                            textServerName.setMaxHeight(Double.MAX_VALUE);
+                            textUserName.setMaxWidth(Double.MAX_VALUE);
+                            textUserName.setMaxHeight(Double.MAX_VALUE);
+                            textQuery.setMaxWidth(Double.MAX_VALUE);
+                            textQuery.setMaxHeight(Double.MAX_VALUE);
+                            passwordSenha.setMaxWidth(Double.MAX_VALUE);
+                            passwordSenha.setMaxHeight(Double.MAX_VALUE);
+                            
+                            GridPane.setVgrow(textDataBase, Priority.ALWAYS);
+                            GridPane.setHgrow(textDataBase, Priority.ALWAYS);
+                            GridPane.setVgrow(textDriverName, Priority.ALWAYS);
+                            GridPane.setHgrow(textDriverName, Priority.ALWAYS);
+                            GridPane.setVgrow(textServerName, Priority.ALWAYS);
+                            GridPane.setHgrow(textServerName, Priority.ALWAYS);
+                            GridPane.setVgrow(textUserName, Priority.ALWAYS);
+                            GridPane.setHgrow(textUserName, Priority.ALWAYS);
+                            GridPane.setVgrow(textQuery, Priority.ALWAYS);
+                            GridPane.setHgrow(textQuery, Priority.ALWAYS);
+                            GridPane.setVgrow(passwordSenha, Priority.ALWAYS);
+                            GridPane.setHgrow(passwordSenha, Priority.ALWAYS);
+                            GridPane.setVgrow(tableViewSQL, Priority.ALWAYS);
+                            GridPane.setHgrow(tableViewSQL, Priority.ALWAYS);
+                            GridPane.setColumnSpan(tableViewSQL, GridPane.REMAINING);
+                            GridPane.setHalignment(buttonSQL, HPos.RIGHT);
+                            GridPane.setHalignment(buttonTestaCon, HPos.RIGHT);
+
+                            expContent = new GridPane();
+                            expContent.setHgap(10);
+                            expContent.setVgap(10);
+                            expContent.setMaxWidth(Double.MAX_VALUE);
+                            expContent.add(labelQuery, 0, 0);
+                            expContent.add(textQuery, 1, 0);
+                            expContent.add(buttonSQL, 1, 1);
+                            expContent.add(tableViewSQL, 0, 2);
+                            expContent.setPrefHeight(240);
+
+                            mainContent = new GridPane();
+                            mainContent.setHgap(10);
+                            mainContent.setVgap(10);
+                            mainContent.setMaxWidth(Double.MAX_VALUE);
+                            mainContent.add(labelDriver, 0, 0);
+                            mainContent.add(textDriverName, 1, 0);
+                            mainContent.add(labelServer, 0, 1);
+                            mainContent.add(textServerName, 1, 1);
+                            mainContent.add(labelDataBase, 0, 2);
+                            mainContent.add(textDataBase, 1, 2);
+                            mainContent.add(labelUser, 0, 3);
+                            mainContent.add(textUserName, 1, 3);
+                            mainContent.add(labelPassword, 0, 4);
+                            mainContent.add(passwordSenha, 1, 4);
+                            mainContent.add(labelEstadoConexao, 0, 5);
+                            mainContent.add(buttonTestaCon, 1, 5);
+
+                            dialog.getDialogPane().setContent(mainContent);
+                            dialog.getDialogPane().setExpandableContent(expContent);
+                            result = dialog.showAndWait();
+                            if (result.get() == ButtonType.OK) {
+                                System.out.println("OK");
+                                tableViewARFF = tableViewSQL;
+                                tableViewARFF.refresh();
+                            } else if (result.get() == ButtonType.CANCEL) {
+                                System.out.println("CANCEL");
+                            }
+                        }
+                        break;
+
+                        case "ODBC":
                             break;
+
+                        case "POSTGRESQL":
+                            break;
+
                         default:
                             break;
                     }
@@ -476,8 +651,7 @@ public class FXMLController implements Initializable {
                             dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
                             labelTitle = new Label("Um filtro para adicionar a classificação, a distribuição de classe e um sinalizador de erro para um conjunto de dados com um classificador.");
-                            textExpansion = new TextArea("As opções válidas são:\n"
-                                    + " -D\n"
+                            textExpansion = new TextArea("-D\n"
                                     + "  Activa a saída de informações de depuração.\n"
                                     + " \n"
                                     + " -W <classifier specification>\n"
@@ -551,8 +725,7 @@ public class FXMLController implements Initializable {
                             dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
                             labelTitle = new Label("Um filtro de atributos supervisionados que pode ser usado para selecionar atributos.");
-                            textExpansion = new TextArea("As opções válidas são:\n"
-                                    + " -S <\"Nome da classe de pesquisa [opções de pesquisa]\">\n"
+                            textExpansion = new TextArea("-S <\"Nome da classe de pesquisa [opções de pesquisa]\">\n"
                                     + "  Configura o método de busca para avaliadores de subconjuntos.\n"
                                     + "  por exemplo. -S \"weka.attributeSelection.BestFirst -S 8\"\n"
                                     + " \n"
@@ -629,8 +802,7 @@ public class FXMLController implements Initializable {
                             dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
                             labelTitle = new Label("Converte os valores dos atributos nominais e / ou numéricos em probabilidades condicionais de classe.");
-                            textExpansion = new TextArea("As opções válidas são:\n"
-                                    + " -N\n"
+                            textExpansion = new TextArea("-N\n"
                                     + "  Não aplique essa transformação em atributos numéricos\n"
                                     + "\n"
                                     + " -C\n"
