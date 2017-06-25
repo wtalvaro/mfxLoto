@@ -38,7 +38,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.PasswordField;
-import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableColumn.CellDataFeatures;
 import javafx.scene.control.TableView;
@@ -46,7 +45,6 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.util.Callback;
 import javafx.stage.FileChooser;
@@ -85,7 +83,6 @@ public class FXMLController implements Initializable {
     @FXML
     private TableView tableViewARFF;
 
-    private Integer num = 0;
     private File selectFileARFF;
     private File selectFileCSV;
     private ObservableList<ObservableList> data = FXCollections.observableArrayList();
