@@ -1,5 +1,6 @@
-package br.com.wta.mfxloto;
+package br.com.wta.mfxloto.controller;
 
+import br.com.wta.mfxloto.MainApp;
 import com.jfoenix.controls.JFXPasswordField;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -469,7 +470,7 @@ public class FXMLController implements Initializable {
                             dialog.initModality(Modality.WINDOW_MODAL);
                             dialog.setResizable(true);
                             dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-                            
+
                             buttonTestaCon.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
                                 @Override
                                 public void handle(MouseEvent event) {
@@ -545,7 +546,7 @@ public class FXMLController implements Initializable {
                             textQuery.setMaxHeight(Double.MAX_VALUE);
                             passwordSenha.setMaxWidth(Double.MAX_VALUE);
                             passwordSenha.setMaxHeight(Double.MAX_VALUE);
-                            
+
                             GridPane.setVgrow(textDataBase, Priority.ALWAYS);
                             GridPane.setHgrow(textDataBase, Priority.ALWAYS);
                             GridPane.setVgrow(textDriverName, Priority.ALWAYS);

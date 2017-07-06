@@ -11,12 +11,13 @@ public class MainApp extends Application {
 
     @Override
     public void start(Stage stage) throws Exception {
-        Parent root = FXMLLoader.load(getClass().getResource("/fxml/Scene.fxml"));
+        Parent root = FXMLLoader.load(getClass().getResource("/fxml/FXMLClassificador.fxml"));
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add("/styles/Styles.css");
+        scene.getStylesheets().add("/styles/fxmlclassificador.css");
 
         stage.setTitle("JavaFX and Maven");
+        stage.setWidth(850);
         stage.setScene(scene);
         stage.show();
     }
