@@ -12,187 +12,190 @@
 <?import javafx.collections.FXCollections?>
 
 <AnchorPane id="AnchorPane" fx:id="AnchorPane" styleClass="fxmlclassificador" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="br.com.wta.mfxloto.controller.FXMLClassificadorController">
-   <children>
-      <BorderPane AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-         <center>
-            <GridPane fx:id="gridMain" hgap="10.0" vgap="10.0" BorderPane.alignment="CENTER">
-               <children>
-                  <Label fx:id="lblClassificador" text="Classificador" GridPane.hgrow="NEVER" GridPane.vgrow="NEVER">
-                     <GridPane.margin>
-                        <Insets />
-                     </GridPane.margin>
-                  </Label>
-                  <Label text="Folder" GridPane.hgrow="NEVER" GridPane.rowIndex="1" GridPane.vgrow="NEVER">
-                     <GridPane.margin>
-                        <Insets />
-                     </GridPane.margin>
-                  </Label>
-                  <Label text="Seed" GridPane.hgrow="NEVER" GridPane.rowIndex="2" GridPane.vgrow="NEVER">
-                     <GridPane.margin>
-                        <Insets />
-                     </GridPane.margin>
-                  </Label>
-                  <HBox spacing="10.0" GridPane.columnIndex="1" GridPane.columnSpan="2147483647" GridPane.rowIndex="1" GridPane.vgrow="NEVER">
-                     <children>
-                        <Slider fx:id="slFolder" majorTickUnit="50.0" minorTickCount="5" showTickLabels="true" showTickMarks="true" snapToTicks="true" value="1.0" HBox.hgrow="ALWAYS">
-                           <HBox.margin>
-                              <Insets />
-                           </HBox.margin>
-                        </Slider>
-                        <TextField fx:id="txtFolder" prefWidth="100.0">
-                           <HBox.margin>
-                              <Insets />
-                           </HBox.margin>
-                        </TextField>
-                     </children>
-                     <opaqueInsets>
-                        <Insets />
-                     </opaqueInsets>
-                  </HBox>
-                  <HBox spacing="10.0" GridPane.columnIndex="1" GridPane.rowIndex="2" GridPane.vgrow="NEVER">
-                     <children>
-                        <Slider fx:id="slSeed" majorTickUnit="50.0" minorTickCount="5" showTickLabels="true" showTickMarks="true" snapToTicks="true" value="1.0" HBox.hgrow="ALWAYS">
-                           <HBox.margin>
-                              <Insets />
-                           </HBox.margin>
-                        </Slider>
-                        <TextField fx:id="txtSeed" prefWidth="100.0">
-                           <HBox.margin>
-                              <Insets />
-                           </HBox.margin>
-                        </TextField>
-                     </children>
-                  </HBox>
-                  <TabPane tabClosingPolicy="UNAVAILABLE" GridPane.columnSpan="2147483647" GridPane.hgrow="ALWAYS" GridPane.rowIndex="3" GridPane.vgrow="ALWAYS">
-                     <tabs>
-                        <Tab closable="false" text="Estatísticas">
-                           <content>
-                              <AnchorPane>
-                                 <children>
-                                    <GridPane hgap="10.0" vgap="10.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-                                       <children>
-                                          <Label text="Instâncias classificadas corretamente:" />
-                                          <Label text="Instâncias classificadas incorretamente:" GridPane.rowIndex="1" />
-                                          <Label text="Estatística Kappa:" GridPane.rowIndex="2" />
-                                          <Label text="Erro absoluto:" GridPane.rowIndex="3" />
-                                          <Label text="Root mean squared error:" GridPane.columnIndex="2" />
-                                          <Label text="Erro relativo absoluto:" GridPane.columnIndex="2" GridPane.rowIndex="1" />
-                                          <Label text="Root relative squared error:" GridPane.columnIndex="2" GridPane.rowIndex="2" />
-                                          <Label text="Número total de instâncias:" GridPane.columnIndex="2" GridPane.rowIndex="3" />
-                                          <TextField fx:id="txtCorreto" editable="false" focusTraversable="false" GridPane.columnIndex="1" />
-                                          <TextField fx:id="txtIncorreto" editable="false" focusTraversable="false" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                                          <TextField fx:id="txtKappa" editable="false" focusTraversable="false" GridPane.columnIndex="1" GridPane.rowIndex="2" />
-                                          <TextField fx:id="txtMeanAbsoluteError" editable="false" focusTraversable="false" GridPane.columnIndex="1" GridPane.rowIndex="3" />
-                                          <TextField fx:id="txtRootMeanSquaredError" editable="false" focusTraversable="false" GridPane.columnIndex="3" />
-                                          <TextField fx:id="txtRelativeAbsoluteError" editable="false" focusTraversable="false" GridPane.columnIndex="3" GridPane.rowIndex="1" />
-                                          <TextField fx:id="txtRootRelativeSquaredError" editable="false" focusTraversable="false" GridPane.columnIndex="3" GridPane.rowIndex="2" />
-                                          <TextField fx:id="txtNumInstances" editable="false" focusTraversable="false" GridPane.columnIndex="3" GridPane.rowIndex="3" />
-                                          <TableView fx:id="tableViewResultado" focusTraversable="false" GridPane.columnSpan="2147483647" GridPane.hgrow="ALWAYS" GridPane.rowIndex="7" GridPane.vgrow="ALWAYS" />
-                                          <ProgressBar fx:id="pbTreino" maxWidth="1.7976931348623157E308" progress="0.0" GridPane.columnSpan="2147483647" GridPane.rowIndex="4" />
-                                          <TextField fx:id="txtApostaUnidade" GridPane.columnIndex="1" GridPane.rowIndex="5" />
-                                          <Label text="Valor total a pagar (R$)" GridPane.rowIndex="6" />
-                                          <Label text="Valor unitário da aposta" GridPane.rowIndex="5" />
-                                          <TextField fx:id="txtQuantidadeJogos" GridPane.columnIndex="3" GridPane.rowIndex="5" />
-                                          <TextField fx:id="txtTotalPagar" editable="false" focusTraversable="false" GridPane.columnIndex="1" GridPane.rowIndex="6" />
-                                          <Button fx:id="btnFicarMilionario" disable="true" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#sortearDezenas" text="Ficar Milionário" GridPane.columnIndex="2" GridPane.columnSpan="2147483647" GridPane.hgrow="ALWAYS" GridPane.rowIndex="6" />
-                                          <Label text="Quantidade de jogos" GridPane.columnIndex="2" GridPane.rowIndex="5" />
-                                       </children>
-                                       <columnConstraints>
-                                          <ColumnConstraints halignment="RIGHT" />
-                                          <ColumnConstraints hgrow="ALWAYS" />
-                                          <ColumnConstraints halignment="RIGHT" />
-                                          <ColumnConstraints hgrow="ALWAYS" />
-                                       </columnConstraints>
-                                       <padding>
-                                          <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-                                       </padding>
-                                       <rowConstraints>
-                                          <RowConstraints vgrow="NEVER" />
-                                          <RowConstraints vgrow="NEVER" />
-                                          <RowConstraints vgrow="NEVER" />
-                                          <RowConstraints vgrow="NEVER" />
-                                          <RowConstraints vgrow="NEVER" />
-                                          <RowConstraints vgrow="NEVER" />
-                                          <RowConstraints vgrow="NEVER" />
-                                          <RowConstraints vgrow="ALWAYS" />
-                                       </rowConstraints>
-                                    </GridPane>
-                                 </children>
-                              </AnchorPane>
-                           </content>
-                        </Tab>
-                        <Tab closable="false" text="ARFF">
-                           <content>
-                              <AnchorPane>
-                                 <children>
-                                    <TableView fx:id="tableViewAmostra" editable="true" focusTraversable="false" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" />
-                                 </children>
-                                 <padding>
-                                    <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-                                 </padding>
-                              </AnchorPane>
-                           </content>
-                        </Tab>
-                     </tabs>
-                     <GridPane.margin>
-                        <Insets bottom="-10.0" left="-10.0" right="-10.0" />
-                     </GridPane.margin>
-                  </TabPane>
-                  <GridPane hgap="5.0" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.vgrow="NEVER">
-                     <children>
-                        <Button fx:id="btnTreinar" mnemonicParsing="false" onAction="#executarTreinamentoRede" prefWidth="100.0" text="Treinar Rede" GridPane.columnIndex="1">
-                           <GridPane.margin>
-                              <Insets />
-                           </GridPane.margin>
-                        </Button>
-                        <ChoiceBox fx:id="cbClassificador" maxWidth="1.7976931348623157E308" minHeight="-Infinity" value="J48">
-                           <items>
-                              <FXCollections fx:factory="observableArrayList">
-                                 <String fx:value="J48" />
-                                 <String fx:value="Bayer" />
-                                 <String fx:value="TTT" />
-                              </FXCollections>
-                           </items>
-                           <GridPane.margin>
-                              <Insets />
-                           </GridPane.margin>
-                        </ChoiceBox>
-                     </children>
-                     <columnConstraints>
-                        <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" prefWidth="100.0" />
-                        <ColumnConstraints hgrow="SOMETIMES" />
-                     </columnConstraints>
-                     <rowConstraints>
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                     </rowConstraints>
-                  </GridPane>
-               </children>
-               <columnConstraints>
-                  <ColumnConstraints halignment="RIGHT" hgrow="NEVER" />
-                  <ColumnConstraints halignment="CENTER" hgrow="ALWAYS" />
-               </columnConstraints>
-               <padding>
-                  <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-               </padding>
-               <rowConstraints>
-                  <RowConstraints vgrow="NEVER" />
-                  <RowConstraints vgrow="NEVER" />
-                  <RowConstraints vgrow="NEVER" />
-                  <RowConstraints vgrow="ALWAYS" />
-               </rowConstraints>
-            </GridPane>
-         </center>
-         <top>
-            <MenuBar BorderPane.alignment="CENTER">
-               <menus>
-                  <Menu mnemonicParsing="false" text="ARFF">
-                     <items>
-                        <MenuItem fx:id="miAbrir" mnemonicParsing="false" onAction="#abrirARFF" text="Abrir" />
-                     </items>
-                  </Menu>
-               </menus>
-            </MenuBar>
-         </top>
-      </BorderPane>
-   </children>
+    <stylesheets>
+        <URL value="@/styles/fxmlclassificador.css" />
+    </stylesheets>   
+    <children>
+        <BorderPane AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+            <center>
+                <GridPane fx:id="gridMain" hgap="10.0" vgap="10.0" BorderPane.alignment="CENTER">
+                    <children>
+                        <Label fx:id="lblClassificador" text="Classificador" GridPane.hgrow="NEVER" GridPane.vgrow="NEVER">
+                            <GridPane.margin>
+                                <Insets />
+                            </GridPane.margin>
+                        </Label>
+                        <Label text="Folder" GridPane.hgrow="NEVER" GridPane.rowIndex="1" GridPane.vgrow="NEVER">
+                            <GridPane.margin>
+                                <Insets />
+                            </GridPane.margin>
+                        </Label>
+                        <Label text="Seed" GridPane.hgrow="NEVER" GridPane.rowIndex="2" GridPane.vgrow="NEVER">
+                            <GridPane.margin>
+                                <Insets />
+                            </GridPane.margin>
+                        </Label>
+                        <HBox spacing="10.0" GridPane.columnIndex="1" GridPane.columnSpan="2147483647" GridPane.rowIndex="1" GridPane.vgrow="NEVER">
+                            <children>
+                                <Slider fx:id="slFolder" majorTickUnit="50.0" minorTickCount="5" showTickLabels="true" showTickMarks="true" snapToTicks="true" value="1.0" HBox.hgrow="ALWAYS">
+                                    <HBox.margin>
+                                        <Insets />
+                                    </HBox.margin>
+                                </Slider>
+                                <TextField fx:id="txtFolder" prefWidth="100.0">
+                                    <HBox.margin>
+                                        <Insets />
+                                    </HBox.margin>
+                                </TextField>
+                            </children>
+                            <opaqueInsets>
+                                <Insets />
+                            </opaqueInsets>
+                        </HBox>
+                        <HBox spacing="10.0" GridPane.columnIndex="1" GridPane.rowIndex="2" GridPane.vgrow="NEVER">
+                            <children>
+                                <Slider fx:id="slSeed" majorTickUnit="50.0" minorTickCount="5" showTickLabels="true" showTickMarks="true" snapToTicks="true" value="1.0" HBox.hgrow="ALWAYS">
+                                    <HBox.margin>
+                                        <Insets />
+                                    </HBox.margin>
+                                </Slider>
+                                <TextField fx:id="txtSeed" prefWidth="100.0">
+                                    <HBox.margin>
+                                        <Insets />
+                                    </HBox.margin>
+                                </TextField>
+                            </children>
+                        </HBox>
+                        <TabPane tabClosingPolicy="UNAVAILABLE" GridPane.columnSpan="2147483647" GridPane.hgrow="ALWAYS" GridPane.rowIndex="3" GridPane.vgrow="ALWAYS">
+                            <tabs>
+                                <Tab closable="false" text="Estatísticas">
+                                    <content>
+                                        <AnchorPane>
+                                            <children>
+                                                <GridPane hgap="10.0" vgap="10.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                                    <children>
+                                                        <Label text="Instâncias classificadas corretamente:" />
+                                                        <Label text="Instâncias classificadas incorretamente:" GridPane.rowIndex="1" />
+                                                        <Label text="Estatística Kappa:" GridPane.rowIndex="2" />
+                                                        <Label text="Erro absoluto:" GridPane.rowIndex="3" />
+                                                        <Label text="Root mean squared error:" GridPane.columnIndex="2" />
+                                                        <Label text="Erro relativo absoluto:" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                                                        <Label text="Root relative squared error:" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+                                                        <Label text="Número total de instâncias:" GridPane.columnIndex="2" GridPane.rowIndex="3" />
+                                                        <TextField fx:id="txtCorreto" editable="false" focusTraversable="false" GridPane.columnIndex="1" />
+                                                        <TextField fx:id="txtIncorreto" editable="false" focusTraversable="false" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                                                        <TextField fx:id="txtKappa" editable="false" focusTraversable="false" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                                                        <TextField fx:id="txtMeanAbsoluteError" editable="false" focusTraversable="false" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+                                                        <TextField fx:id="txtRootMeanSquaredError" editable="false" focusTraversable="false" GridPane.columnIndex="3" />
+                                                        <TextField fx:id="txtRelativeAbsoluteError" editable="false" focusTraversable="false" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                                                        <TextField fx:id="txtRootRelativeSquaredError" editable="false" focusTraversable="false" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+                                                        <TextField fx:id="txtNumInstances" editable="false" focusTraversable="false" GridPane.columnIndex="3" GridPane.rowIndex="3" />
+                                                        <TableView fx:id="tableViewResultado" focusTraversable="false" GridPane.columnSpan="2147483647" GridPane.hgrow="ALWAYS" GridPane.rowIndex="7" GridPane.vgrow="ALWAYS" />
+                                                        <ProgressBar fx:id="pbTreino" maxWidth="1.7976931348623157E308" progress="0.0" GridPane.columnSpan="2147483647" GridPane.rowIndex="4" />
+                                                        <TextField fx:id="txtApostaUnidade" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+                                                        <Label text="Valor total a pagar (R$)" GridPane.rowIndex="6" />
+                                                        <Label text="Valor unitário da aposta" GridPane.rowIndex="5" />
+                                                        <TextField fx:id="txtQuantidadeJogos" GridPane.columnIndex="3" GridPane.rowIndex="5" />
+                                                        <TextField fx:id="txtTotalPagar" editable="false" focusTraversable="false" GridPane.columnIndex="1" GridPane.rowIndex="6" />
+                                                        <Button fx:id="btnFicarMilionario" disable="true" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#sortearDezenas" text="Ficar Milionário" GridPane.columnIndex="2" GridPane.columnSpan="2147483647" GridPane.hgrow="ALWAYS" GridPane.rowIndex="6" />
+                                                        <Label text="Quantidade de jogos" GridPane.columnIndex="2" GridPane.rowIndex="5" />
+                                                    </children>
+                                                    <columnConstraints>
+                                                        <ColumnConstraints halignment="RIGHT" />
+                                                        <ColumnConstraints hgrow="ALWAYS" />
+                                                        <ColumnConstraints halignment="RIGHT" />
+                                                        <ColumnConstraints hgrow="ALWAYS" />
+                                                    </columnConstraints>
+                                                    <padding>
+                                                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                                                    </padding>
+                                                    <rowConstraints>
+                                                        <RowConstraints vgrow="NEVER" />
+                                                        <RowConstraints vgrow="NEVER" />
+                                                        <RowConstraints vgrow="NEVER" />
+                                                        <RowConstraints vgrow="NEVER" />
+                                                        <RowConstraints vgrow="NEVER" />
+                                                        <RowConstraints vgrow="NEVER" />
+                                                        <RowConstraints vgrow="NEVER" />
+                                                        <RowConstraints vgrow="ALWAYS" />
+                                                    </rowConstraints>
+                                                </GridPane>
+                                            </children>
+                                        </AnchorPane>
+                                    </content>
+                                </Tab>
+                                <Tab closable="false" text="ARFF">
+                                    <content>
+                                        <AnchorPane>
+                                            <children>
+                                                <TableView fx:id="tableViewAmostra" editable="true" focusTraversable="false" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" />
+                                            </children>
+                                            <padding>
+                                                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                                            </padding>
+                                        </AnchorPane>
+                                    </content>
+                                </Tab>
+                            </tabs>
+                            <GridPane.margin>
+                                <Insets bottom="-10.0" left="-10.0" right="-10.0" />
+                            </GridPane.margin>
+                        </TabPane>
+                        <GridPane hgap="5.0" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.vgrow="NEVER">
+                            <children>
+                                <Button fx:id="btnTreinar" mnemonicParsing="false" onAction="#executarTreinamentoRede" prefWidth="100.0" text="Treinar Rede" GridPane.columnIndex="1">
+                                    <GridPane.margin>
+                                        <Insets />
+                                    </GridPane.margin>
+                                </Button>
+                                <ChoiceBox fx:id="cbClassificador" maxWidth="1.7976931348623157E308" minHeight="-Infinity" value="J48">
+                                    <items>
+                                        <FXCollections fx:factory="observableArrayList">
+                                            <String fx:value="J48" />
+                                            <String fx:value="Bayer" />
+                                            <String fx:value="TTT" />
+                                        </FXCollections>
+                                    </items>
+                                    <GridPane.margin>
+                                        <Insets />
+                                    </GridPane.margin>
+                                </ChoiceBox>
+                            </children>
+                            <columnConstraints>
+                                <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" prefWidth="100.0" />
+                                <ColumnConstraints hgrow="SOMETIMES" />
+                            </columnConstraints>
+                            <rowConstraints>
+                                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                            </rowConstraints>
+                        </GridPane>
+                    </children>
+                    <columnConstraints>
+                        <ColumnConstraints halignment="RIGHT" hgrow="NEVER" />
+                        <ColumnConstraints halignment="CENTER" hgrow="ALWAYS" />
+                    </columnConstraints>
+                    <padding>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                    </padding>
+                    <rowConstraints>
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="ALWAYS" />
+                    </rowConstraints>
+                </GridPane>
+            </center>
+            <top>
+                <MenuBar BorderPane.alignment="CENTER">
+                    <menus>
+                        <Menu mnemonicParsing="false" text="ARFF">
+                            <items>
+                                <MenuItem fx:id="miAbrir" mnemonicParsing="false" onAction="#abrirARFF" text="Abrir" />
+                            </items>
+                        </Menu>
+                    </menus>
+                </MenuBar>
+            </top>
+        </BorderPane>
+    </children>
 </AnchorPane>

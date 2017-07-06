@@ -5,12 +5,10 @@
  */
 package br.com.wta.mfxloto.controller;
 
-import br.com.wta.mfxloto.dao.DAOMegasena;
 import java.io.File;
 import java.net.URL;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.text.NumberFormat;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Random;
@@ -19,6 +17,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -44,12 +44,9 @@ import javafx.util.Callback;
 import javafx.util.converter.NumberStringConverter;
 import weka.classifiers.Evaluation;
 import weka.classifiers.trees.J48;
-import weka.core.Attribute;
 import weka.core.DenseInstance;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
-import weka.filters.Filter;
-import weka.filters.unsupervised.attribute.Discretize;
 
 /**
  * FXML Controller class
@@ -102,6 +99,8 @@ public class FXMLClassificadorController implements Initializable {
     private GridPane gridMain;
     @FXML
     private Button btnFicarMilionario;
+    @FXML
+    private Button btnTreinar;
 
     private File selectFileARFF;
     private ObservableList<ObservableList> data = FXCollections.observableArrayList();
@@ -246,6 +245,12 @@ public class FXMLClassificadorController implements Initializable {
             Task task = new Task<Void>() {
                 @Override
                 protected Void call() throws Exception {
+                    btnTreinar.setDisable(true);
+                    btnFicarMilionario.setDisable(true);
+                    slFolder.setDisable(true);
+                    slSeed.setDisable(true);
+                    txtSeed.setDisable(true);
+                    txtFolder.setDisable(true);
                     setJ48(new J48());
                     getJ48().buildClassifier(getScheme());
                     criarEvaluations(Integer.parseInt(txtFolder.getText()), Integer.parseInt(txtSeed.getText()));
@@ -257,13 +262,18 @@ public class FXMLClassificadorController implements Initializable {
                     txtRootRelativeSquaredError.setText(String.valueOf(getEval().rootRelativeSquaredError()));
                     txtRelativeAbsoluteError.setText(String.valueOf(getEval().relativeAbsoluteError()));
                     txtNumInstances.setText(String.valueOf(getEval().numInstances()));
+                    txtSeed.setDisable(false);
+                    txtFolder.setDisable(false);
+                    slFolder.setDisable(false);
+                    slSeed.setDisable(false);
+                    btnFicarMilionario.setDisable(false);
+                    btnTreinar.setDisable(false);
                     updateProgress(0, 0);
                     return null;
                 }
             };
             pbTreino.progressProperty().bind(task.progressProperty());
             new Thread(task).start();
-            btnFicarMilionario.setDisable(false);
         } catch (Exception ex) {
             Logger.getLogger(FXMLClassificadorController.class
                     .getName()).log(Level.SEVERE, null, ex);
@@ -314,12 +324,22 @@ public class FXMLClassificadorController implements Initializable {
         for (int i = 0; i < getSchemeDense().numAttributes(); i++) {
             final int j = i;
             root[i] = new TableColumn(getSchemeDense().attribute(i).name());
-            root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, String>, ObservableValue<String>>() {
-                @Override
-                public ObservableValue<String> call(TableColumn.CellDataFeatures<ObservableList, String> param) {
-                    return new SimpleStringProperty(param.getValue().get(j).toString());
-                }
-            });
+            if (root[i].getText().equals("acumulado")) {
+                root[i].setText("probabilidade");
+                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
+                    @Override
+                    public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param) {
+                        return new SimpleDoubleProperty(Double.parseDouble(param.getValue().get(j).toString()));
+                    }
+                });
+            } else {
+                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
+                    @Override
+                    public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param) {
+                        return new SimpleIntegerProperty(Integer.parseInt(param.getValue().get(j).toString()));
+                    }
+                });
+            }
             tableViewResultado.getColumns().add(root[i]);
         }
 
