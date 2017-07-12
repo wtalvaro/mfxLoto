@@ -9,6 +9,7 @@ import java.io.File;
 import java.net.URL;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.time.LocalDate;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Random;
@@ -20,6 +21,7 @@ import java.util.logging.Logger;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
@@ -39,6 +41,8 @@ import javafx.scene.control.TextFormatter;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.GridPane;
+import javafx.scene.web.WebEngine;
+import javafx.scene.web.WebView;
 import javafx.stage.FileChooser;
 import javafx.util.Callback;
 import javafx.util.converter.NumberStringConverter;
@@ -101,6 +105,8 @@ public class FXMLClassificadorController implements Initializable {
     private Button btnFicarMilionario;
     @FXML
     private Button btnTreinar;
+    @FXML
+    private WebView wvWeka;
 
     private File selectFileARFF;
     private ObservableList<ObservableList> data = FXCollections.observableArrayList();
@@ -112,6 +118,8 @@ public class FXMLClassificadorController implements Initializable {
     private double[] probabilidade;
     private J48 j48;
     private FileChooser fileChooser;
+    private final int NA = 0;
+    private final int AC = 1;
 
     /**
      * Initializes the controller class.
@@ -205,6 +213,9 @@ public class FXMLClassificadorController implements Initializable {
                     }
                 }
             });
+
+            WebEngine engine = wvWeka.getEngine();
+            engine.load("http://weka.sourceforge.net/doc.stable-3-8/");
         } catch (Exception ex) {
             Logger.getLogger(FXMLClassificadorController.class
                     .getName()).log(Level.SEVERE, null, ex);
@@ -221,18 +232,20 @@ public class FXMLClassificadorController implements Initializable {
             );
             selectFileARFF = fileChooser.showOpenDialog(AnchorPane.getScene().getWindow());
 
-            setSource(new DataSource(selectFileARFF.getAbsolutePath()));
-            setScheme(new Instances(getSource().getDataSet()));
+            if (selectFileARFF != null) {
+                setSource(new DataSource(selectFileARFF.getAbsolutePath()));
+                setScheme(new Instances(getSource().getDataSet()));
 
-            if (getScheme().classIndex() == -1) {
-                getScheme().setClassIndex(getScheme().numAttributes() - 1);
+                if (getScheme().classIndex() == -1) {
+                    getScheme().setClassIndex(getScheme().numAttributes() - 1);
+                }
+
+                slFolder.setMax(getScheme().numInstances());
+                slFolder.setMajorTickUnit(getScheme().numInstances() / 2);
+
+                gerarTabela(data, tableViewAmostra);
+                gridMain.setDisable(false);
             }
-
-            slFolder.setMax(getScheme().numInstances());
-            slFolder.setMajorTickUnit(getScheme().numInstances() / 2);
-
-            gerarTabela(data, tableViewAmostra);
-            gridMain.setDisable(false);
         } catch (Exception ex) {
             Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -275,8 +288,7 @@ public class FXMLClassificadorController implements Initializable {
             pbTreino.progressProperty().bind(task.progressProperty());
             new Thread(task).start();
         } catch (Exception ex) {
-            Logger.getLogger(FXMLClassificadorController.class
-                    .getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
@@ -284,14 +296,20 @@ public class FXMLClassificadorController implements Initializable {
     protected void sortearDezenas(ActionEvent event) {
         int size = Integer.parseInt(txtQuantidadeJogos.getText());
         ObservableList<ObservableList> dataM = FXCollections.observableArrayList();
-
+        char[] cartela = new char[]{
+            '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
+            '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
+            '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
+            '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
+            '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
+            '?', '?', '?', '?', '?', '?', '?', '?', '?', '?'
+        };
         setSchemeDense(new DenseInstance(getScheme().numAttributes()));
         getSchemeDense().setDataset(getScheme());
         dataM.clear();
 
         for (int k = 0; k < size; k++) {
             ObservableList<String> row = FXCollections.observableArrayList();
-            int attributeNext = 0;
             Random rng = new Random();
             TreeSet<Integer> generated = new TreeSet<Integer>();
 
@@ -304,9 +322,18 @@ public class FXMLClassificadorController implements Initializable {
             Iterator<Integer> it = escolhidos.iterator();
             while (it.hasNext()) {
                 int number = Integer.parseInt(it.next().toString());
-                getSchemeDense().setValue(attributeNext, number);
+                cartela[number - 1] = 't';
                 row.add(String.valueOf(number));
-                attributeNext++;
+            }
+
+            for (int i = 0; i < cartela.length; i++) {
+                getSchemeDense().setValue(i, cartela[i]);
+            }
+
+            if (size % 2 == 0) {
+                getSchemeDense().setValue(60, "AC");
+            } else {
+                getSchemeDense().setValue(60, "NA");
             }
 
             try {
@@ -314,35 +341,62 @@ public class FXMLClassificadorController implements Initializable {
             } catch (Exception ex) {
                 Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
             }
-            row.add(String.valueOf(getProbabilidade()[0]));
+            row.add(String.valueOf(getProbabilidade()[AC]));
+            row.add(String.valueOf(getProbabilidade()[NA]));
             dataM.add(row);
         }
 
         tableViewResultado.getColumns().clear();
-        TableColumn[] root = new TableColumn[getSchemeDense().numAttributes()];
+        TableColumn[] root = new TableColumn[6];
 
-        for (int i = 0; i < getSchemeDense().numAttributes(); i++) {
+        for (int i = 0; i < root.length; i++) {
             final int j = i;
-            root[i] = new TableColumn(getSchemeDense().attribute(i).name());
-            if (root[i].getText().equals("acumulado")) {
-                root[i].setText("probabilidade");
-                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
-                    @Override
-                    public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param) {
-                        return new SimpleDoubleProperty(Double.parseDouble(param.getValue().get(j).toString()));
-                    }
-                });
-            } else {
+            int dezena = i + 1;
+            root[i] = new TableColumn("Dezena " + dezena);
+            if (getSchemeDense().attribute(i).isNumeric()) {
                 root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
                     @Override
                     public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param) {
                         return new SimpleIntegerProperty(Integer.parseInt(param.getValue().get(j).toString()));
                     }
                 });
+            } else if (getSchemeDense().attribute(i).isNominal()) {
+                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, String>, ObservableValue<String>>() {
+                    @Override
+                    public ObservableValue<String> call(TableColumn.CellDataFeatures<ObservableList, String> param) {
+                        return new SimpleStringProperty(param.getValue().get(j).toString());
+                    }
+                });
+            } else if (getSchemeDense().attribute(i).isDate()) {
+                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, LocalDate>, ObservableValue<LocalDate>>() {
+                    @Override
+                    public ObservableValue<LocalDate> call(TableColumn.CellDataFeatures<ObservableList, LocalDate> param) {
+                        return new SimpleObjectProperty<LocalDate>(LocalDate.parse(param.getValue().get(j).toString()));
+                    }
+                });
             }
             tableViewResultado.getColumns().add(root[i]);
         }
 
+        TableColumn probabilidadeAC = new TableColumn("probabilidade AC");
+        TableColumn probabilidadeNA = new TableColumn("probabilidade NA");
+
+        probabilidadeAC.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
+            @Override
+            public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param
+            ) {
+                return new SimpleDoubleProperty(Double.parseDouble(param.getValue().get(6).toString()));
+            }
+        });
+        probabilidadeNA.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
+            @Override
+            public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param
+            ) {
+                return new SimpleDoubleProperty(Double.parseDouble(param.getValue().get(7).toString()));
+            }
+        });
+        tableViewResultado.getColumns().add(probabilidadeAC);
+        tableViewResultado.getColumns().add(probabilidadeNA);
         tableViewResultado.setItems(dataM);
     }
 
@@ -361,12 +415,21 @@ public class FXMLClassificadorController implements Initializable {
             root[i] = new TableColumn(getScheme().attribute(i).name());
             root[i].setMinWidth(100);
             root[i].setMinWidth(100);
-            root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, String>, ObservableValue<String>>() {
-                @Override
-                public ObservableValue<String> call(TableColumn.CellDataFeatures<ObservableList, String> param) {
-                    return new SimpleStringProperty(param.getValue().get(j).toString());
-                }
-            });
+            if (getScheme().attribute(i).isNumeric()) {
+                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
+                    @Override
+                    public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param) {
+                        return new SimpleIntegerProperty(Integer.parseInt(param.getValue().get(j).toString()));
+                    }
+                });
+            } else if (getScheme().attribute(i).isNominal()) {
+                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, String>, ObservableValue<String>>() {
+                    @Override
+                    public ObservableValue<String> call(TableColumn.CellDataFeatures<ObservableList, String> param) {
+                        return new SimpleStringProperty(param.getValue().get(j).toString());
+                    }
+                });
+            }
             table.getColumns().add(root[i]);
         }
         for (int i = 0; i < getScheme().numInstances(); i++) {
