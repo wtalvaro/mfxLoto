@@ -11,6 +11,7 @@ public class MainApp extends Application {
 
     @Override
     public void start(Stage stage) throws Exception {
+        System.setProperty("hadoop.home.dir", "D:\\OthersApps\\Apache\\hadoop\\bin");
         Parent root = FXMLLoader.load(getClass().getResource("/fxml/FXMLClassificador.fxml"));
 
         Scene scene = new Scene(root);

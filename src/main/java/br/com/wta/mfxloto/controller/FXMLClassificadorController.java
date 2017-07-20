@@ -5,6 +5,7 @@
  */
 package br.com.wta.mfxloto.controller;
 
+import java.awt.BorderLayout;
 import java.io.File;
 import java.net.URL;
 import java.text.DecimalFormat;
@@ -32,10 +33,12 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
 import javafx.scene.control.Tooltip;
@@ -46,11 +49,16 @@ import javafx.scene.web.WebView;
 import javafx.stage.FileChooser;
 import javafx.util.Callback;
 import javafx.util.converter.NumberStringConverter;
+import javax.swing.JFrame;
 import weka.classifiers.Evaluation;
-import weka.classifiers.trees.J48;
+import weka.classifiers.evaluation.ThresholdCurve;
+import weka.classifiers.functions.MultilayerPerceptron;
 import weka.core.DenseInstance;
 import weka.core.Instances;
+import weka.core.Utils;
 import weka.core.converters.ConverterUtils.DataSource;
+import weka.gui.visualize.PlotData2D;
+import weka.gui.visualize.ThresholdVisualizePanel;
 
 /**
  * FXML Controller class
@@ -107,19 +115,257 @@ public class FXMLClassificadorController implements Initializable {
     private Button btnTreinar;
     @FXML
     private WebView wvWeka;
+    @FXML
+    private MenuItem miROC;
+    @FXML
+    private TextArea txtAreaMatrix;
+    @FXML
+    private TextArea txtAreaClassDetails;
+    @FXML
+    private TextArea txtAreaCumulativeMarginDistribution;
 
-    private File selectFileARFF;
-    private ObservableList<ObservableList> data = FXCollections.observableArrayList();
-    private String options;
-    private DataSource source;
-    private Instances scheme;
-    private DenseInstance schemeDense;
-    private Evaluation eval;
-    private double[] probabilidade;
-    private J48 j48;
-    private FileChooser fileChooser;
-    private final int NA = 0;
-    private final int AC = 1;
+    @FXML
+    protected void abrirARFF(ActionEvent event) {
+        try {
+            fileChooser = new FileChooser();
+            fileChooser.setTitle("Abrir ARFF");
+            fileChooser.getExtensionFilters().addAll(
+                    new FileChooser.ExtensionFilter("ARFF File", "*.arff")
+            );
+            selectFileARFF = fileChooser.showOpenDialog(AnchorPane.getScene().getWindow());
+
+            if (selectFileARFF != null) {
+                setSource(new DataSource(selectFileARFF.getAbsolutePath()));
+                setScheme(new Instances(getSource().getDataSet()));
+
+                if (getScheme().classIndex() == -1) {
+                    getScheme().setClassIndex(getScheme().numAttributes() - 1);
+                }
+
+                slFolder.setMax(getScheme().numInstances());
+                slFolder.setMajorTickUnit(getScheme().numInstances() / 2);
+
+                gerarTabela(data, tableViewAmostra);
+                gridMain.setDisable(false);
+            }
+        } catch (Exception ex) {
+            Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    @FXML
+    protected void executarTreinamentoRede(ActionEvent event) {
+        try {
+            // TODO Auto-generated method stub
+            Task task = new Task<Void>() {
+                @Override
+                protected Void call() throws Exception {
+                    miROC.setDisable(true);
+                    btnTreinar.setDisable(true);
+                    btnFicarMilionario.setDisable(true);
+                    slFolder.setDisable(true);
+                    slSeed.setDisable(true);
+                    txtSeed.setDisable(true);
+                    txtFolder.setDisable(true);
+                    setMlp(new MultilayerPerceptron());
+                    getMlp().buildClassifier(getScheme());
+                    criarEvaluations(Integer.parseInt(txtFolder.getText()), Integer.parseInt(txtSeed.getText()));
+                    txtCorreto.setText(String.valueOf(getEval().correct()));
+                    txtIncorreto.setText(String.valueOf(getEval().incorrect()));
+                    txtKappa.setText(String.valueOf(getEval().kappa()));
+                    txtMeanAbsoluteError.setText(String.valueOf(getEval().meanAbsoluteError()));
+                    txtRootMeanSquaredError.setText(String.valueOf(getEval().rootMeanSquaredError()));
+                    txtRootRelativeSquaredError.setText(String.valueOf(getEval().rootRelativeSquaredError()));
+                    txtRelativeAbsoluteError.setText(String.valueOf(getEval().relativeAbsoluteError()));
+                    txtNumInstances.setText(String.valueOf(getEval().numInstances()));
+                    txtAreaMatrix.setText(getEval().toMatrixString());
+                    txtAreaClassDetails.setText(getEval().toClassDetailsString());
+                    txtAreaCumulativeMarginDistribution.setText(getEval().toCumulativeMarginDistributionString());
+                    txtSeed.setDisable(false);
+                    txtFolder.setDisable(false);
+                    slFolder.setDisable(false);
+                    slSeed.setDisable(false);
+                    btnFicarMilionario.setDisable(false);
+                    btnTreinar.setDisable(false);
+                    miROC.setDisable(false);
+                    updateProgress(0, 0);
+                    return null;
+                }
+            };
+            pbTreino.progressProperty().bind(task.progressProperty());
+            new Thread(task).start();
+        } catch (Exception ex) {
+            Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    @FXML
+    protected void gerarCurva(ActionEvent event) {
+        try {
+            ThresholdCurve tc = new ThresholdCurve();
+            int classIndex = 0;
+            Instances curve = tc.getCurve(getEval().predictions(), classIndex);
+            PlotData2D plotdata = new PlotData2D(curve);
+            plotdata.setPlotName(curve.relationName());
+            plotdata.addInstanceNumberAttribute();
+            ThresholdVisualizePanel tvp = new ThresholdVisualizePanel();
+            tvp.setROCString("(Area under ROC = " + Utils.doubleToString(ThresholdCurve.getROCArea(curve), 4) + ")");
+            tvp.setName(curve.relationName());
+            tvp.addPlot(plotdata);
+            final JFrame jf = new JFrame("WEKA ROC: " + tvp.getName());
+            jf.setSize(500, 400);
+            jf.getContentPane().setLayout(new BorderLayout());
+            jf.getContentPane().add(tvp, BorderLayout.CENTER);
+            jf.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            jf.setVisible(true);
+        } catch (Exception ex) {
+            Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    @FXML
+    protected void sortearDezenas(ActionEvent event) {
+        int size = Integer.parseInt(txtQuantidadeJogos.getText());
+        ObservableList<ObservableList> dataM = FXCollections.observableArrayList();
+        setSchemeDense(new DenseInstance(getScheme().numAttributes()));
+        getSchemeDense().setDataset(getScheme());
+        dataM.clear();
+        for (int k = 0; k < size; k++) {
+            char[] cartela = new char[]{
+                '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
+                '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
+                '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
+                '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
+                '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
+                '?', '?', '?', '?', '?', '?', '?', '?', '?', '?'
+            };
+            ObservableList<String> row = FXCollections.observableArrayList();
+            Random rng = new Random();
+            TreeSet<Integer> generated = new TreeSet<Integer>();
+
+            while (generated.size() < 6) {
+                Integer next = rng.nextInt(60) + 1;
+                generated.add(next);
+            }
+
+            Set<Integer> escolhidos = generated;
+            Iterator<Integer> it = escolhidos.iterator();
+            while (it.hasNext()) {
+                int number = Integer.parseInt(it.next().toString());
+                cartela[number - 1] = 't';
+                row.add(String.valueOf(number));
+            }
+
+            for (int i = 0; i < cartela.length; i++) {
+                getSchemeDense().setValue(i, cartela[i]);
+            }
+
+            try {
+                setProbabilidade(getMlp().distributionForInstance(getSchemeDense()));
+            } catch (Exception ex) {
+                Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            row.add(String.valueOf(getProbabilidade()[AC]));
+            row.add(String.valueOf(getProbabilidade()[NA]));
+            dataM.add(row);
+        }
+
+        tableViewResultado.getColumns().clear();
+        TableColumn[] root = new TableColumn[6];
+
+        for (int i = 0; i < root.length; i++) {
+            final int j = i;
+            int dezena = i + 1;
+            root[i] = new TableColumn("Dezena " + dezena);
+            if (getSchemeDense().attribute(i).isNumeric()) {
+                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
+                    @Override
+                    public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param) {
+                        return new SimpleIntegerProperty(Integer.parseInt(param.getValue().get(j).toString()));
+                    }
+                });
+            } else if (getSchemeDense().attribute(i).isNominal()) {
+                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, String>, ObservableValue<String>>() {
+                    @Override
+                    public ObservableValue<String> call(TableColumn.CellDataFeatures<ObservableList, String> param) {
+                        return new SimpleStringProperty(param.getValue().get(j).toString());
+                    }
+                });
+            } else if (getSchemeDense().attribute(i).isDate()) {
+                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, LocalDate>, ObservableValue<LocalDate>>() {
+                    @Override
+                    public ObservableValue<LocalDate> call(TableColumn.CellDataFeatures<ObservableList, LocalDate> param) {
+                        return new SimpleObjectProperty<LocalDate>(LocalDate.parse(param.getValue().get(j).toString()));
+                    }
+                });
+            }
+            tableViewResultado.getColumns().add(root[i]);
+        }
+
+        TableColumn probabilidadeAC = new TableColumn("AC");
+        TableColumn probabilidadeNA = new TableColumn("NA");
+
+        probabilidadeAC.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
+            @Override
+            public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param
+            ) {
+                return new SimpleDoubleProperty(Double.parseDouble(param.getValue().get(6).toString()));
+            }
+        });
+        probabilidadeNA.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
+            @Override
+            public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param
+            ) {
+                return new SimpleDoubleProperty(Double.parseDouble(param.getValue().get(7).toString()));
+            }
+        });
+
+        tableViewResultado.getColumns().add(probabilidadeAC);
+        tableViewResultado.getColumns().add(probabilidadeNA);
+        tableViewResultado.setItems(dataM);
+    }
+
+    private void criarEvaluations(int folder, int seed) throws Exception {
+        // TODO Auto-generated method stub
+        setEval(new Evaluation(getScheme()));
+        getEval().crossValidateModel(getMlp(), getScheme(), folder, new Random(seed));
+    }
+
+    private void gerarTabela(ObservableList<ObservableList> data, TableView table) throws Exception {
+        TableColumn[] root = new TableColumn[getScheme().numAttributes()];
+        table.getColumns().clear();
+        data.clear();
+        for (int i = 0; i < getScheme().numAttributes(); i++) {
+            final int j = i;
+            root[i] = new TableColumn(getScheme().attribute(i).name());
+            root[i].setMinWidth(100);
+            root[i].setMinWidth(100);
+            if (getScheme().attribute(i).isNumeric()) {
+                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
+                    @Override
+                    public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param) {
+                        return new SimpleIntegerProperty(Integer.parseInt(param.getValue().get(j).toString()));
+                    }
+                });
+            } else if (getScheme().attribute(i).isNominal()) {
+                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, String>, ObservableValue<String>>() {
+                    @Override
+                    public ObservableValue<String> call(TableColumn.CellDataFeatures<ObservableList, String> param) {
+                        return new SimpleStringProperty(param.getValue().get(j).toString());
+                    }
+                });
+            }
+            table.getColumns().add(root[i]);
+        }
+        for (int i = 0; i < getScheme().numInstances(); i++) {
+            ObservableList<String> row = FXCollections.observableArrayList();
+            for (int j = 0; j < getScheme().numAttributes(); j++) {
+                row.add(getScheme().instance(i).toString(j));
+            }
+            data.add(row);
+        }
+        table.setItems(data);
+    }
 
     /**
      * Initializes the controller class.
@@ -155,7 +401,7 @@ public class FXMLClassificadorController implements Initializable {
             txtQuantidadeJogos.setTextFormatter(formatterQuantidade);
             txtQuantidadeJogos.setText("0");
 
-            TextFormatter formatterTotal = new TextFormatter(new NumberStringConverter(decimalFormat));
+            TextFormatter formatterTotal = new TextFormatter(new NumberStringConverter(decimalFormatUnidade));
             txtTotalPagar.setTextFormatter(formatterTotal);
             txtTotalPagar.setText("0");
 
@@ -222,226 +468,6 @@ public class FXMLClassificadorController implements Initializable {
         }
     }
 
-    @FXML
-    protected void abrirARFF(ActionEvent event) {
-        try {
-            fileChooser = new FileChooser();
-            fileChooser.setTitle("Abrir ARFF");
-            fileChooser.getExtensionFilters().addAll(
-                    new FileChooser.ExtensionFilter("ARFF File", "*.arff")
-            );
-            selectFileARFF = fileChooser.showOpenDialog(AnchorPane.getScene().getWindow());
-
-            if (selectFileARFF != null) {
-                setSource(new DataSource(selectFileARFF.getAbsolutePath()));
-                setScheme(new Instances(getSource().getDataSet()));
-
-                if (getScheme().classIndex() == -1) {
-                    getScheme().setClassIndex(getScheme().numAttributes() - 1);
-                }
-
-                slFolder.setMax(getScheme().numInstances());
-                slFolder.setMajorTickUnit(getScheme().numInstances() / 2);
-
-                gerarTabela(data, tableViewAmostra);
-                gridMain.setDisable(false);
-            }
-        } catch (Exception ex) {
-            Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-
-    @FXML
-    protected void executarTreinamentoRede(ActionEvent event) {
-        try {
-            // TODO Auto-generated method stub
-            Task task = new Task<Void>() {
-                @Override
-                protected Void call() throws Exception {
-                    btnTreinar.setDisable(true);
-                    btnFicarMilionario.setDisable(true);
-                    slFolder.setDisable(true);
-                    slSeed.setDisable(true);
-                    txtSeed.setDisable(true);
-                    txtFolder.setDisable(true);
-                    setJ48(new J48());
-                    getJ48().buildClassifier(getScheme());
-                    criarEvaluations(Integer.parseInt(txtFolder.getText()), Integer.parseInt(txtSeed.getText()));
-                    txtCorreto.setText(String.valueOf(getEval().correct()));
-                    txtIncorreto.setText(String.valueOf(getEval().incorrect()));
-                    txtKappa.setText(String.valueOf(getEval().kappa()));
-                    txtMeanAbsoluteError.setText(String.valueOf(getEval().meanAbsoluteError()));
-                    txtRootMeanSquaredError.setText(String.valueOf(getEval().rootMeanSquaredError()));
-                    txtRootRelativeSquaredError.setText(String.valueOf(getEval().rootRelativeSquaredError()));
-                    txtRelativeAbsoluteError.setText(String.valueOf(getEval().relativeAbsoluteError()));
-                    txtNumInstances.setText(String.valueOf(getEval().numInstances()));
-                    txtSeed.setDisable(false);
-                    txtFolder.setDisable(false);
-                    slFolder.setDisable(false);
-                    slSeed.setDisable(false);
-                    btnFicarMilionario.setDisable(false);
-                    btnTreinar.setDisable(false);
-                    updateProgress(0, 0);
-                    return null;
-                }
-            };
-            pbTreino.progressProperty().bind(task.progressProperty());
-            new Thread(task).start();
-        } catch (Exception ex) {
-            Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-
-    @FXML
-    protected void sortearDezenas(ActionEvent event) {
-        int size = Integer.parseInt(txtQuantidadeJogos.getText());
-        ObservableList<ObservableList> dataM = FXCollections.observableArrayList();
-        char[] cartela = new char[]{
-            '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
-            '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
-            '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
-            '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
-            '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
-            '?', '?', '?', '?', '?', '?', '?', '?', '?', '?'
-        };
-        setSchemeDense(new DenseInstance(getScheme().numAttributes()));
-        getSchemeDense().setDataset(getScheme());
-        dataM.clear();
-
-        for (int k = 0; k < size; k++) {
-            ObservableList<String> row = FXCollections.observableArrayList();
-            Random rng = new Random();
-            TreeSet<Integer> generated = new TreeSet<Integer>();
-
-            while (generated.size() < 6) {
-                Integer next = rng.nextInt(60) + 1;
-                generated.add(next);
-            }
-
-            Set<Integer> escolhidos = generated;
-            Iterator<Integer> it = escolhidos.iterator();
-            while (it.hasNext()) {
-                int number = Integer.parseInt(it.next().toString());
-                cartela[number - 1] = 't';
-                row.add(String.valueOf(number));
-            }
-
-            for (int i = 0; i < cartela.length; i++) {
-                getSchemeDense().setValue(i, cartela[i]);
-            }
-
-            if (size % 2 == 0) {
-                getSchemeDense().setValue(60, "AC");
-            } else {
-                getSchemeDense().setValue(60, "NA");
-            }
-
-            try {
-                setProbabilidade(getJ48().distributionForInstance(getSchemeDense()));
-            } catch (Exception ex) {
-                Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            row.add(String.valueOf(getProbabilidade()[AC]));
-            row.add(String.valueOf(getProbabilidade()[NA]));
-            dataM.add(row);
-        }
-
-        tableViewResultado.getColumns().clear();
-        TableColumn[] root = new TableColumn[6];
-
-        for (int i = 0; i < root.length; i++) {
-            final int j = i;
-            int dezena = i + 1;
-            root[i] = new TableColumn("Dezena " + dezena);
-            if (getSchemeDense().attribute(i).isNumeric()) {
-                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
-                    @Override
-                    public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param) {
-                        return new SimpleIntegerProperty(Integer.parseInt(param.getValue().get(j).toString()));
-                    }
-                });
-            } else if (getSchemeDense().attribute(i).isNominal()) {
-                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, String>, ObservableValue<String>>() {
-                    @Override
-                    public ObservableValue<String> call(TableColumn.CellDataFeatures<ObservableList, String> param) {
-                        return new SimpleStringProperty(param.getValue().get(j).toString());
-                    }
-                });
-            } else if (getSchemeDense().attribute(i).isDate()) {
-                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, LocalDate>, ObservableValue<LocalDate>>() {
-                    @Override
-                    public ObservableValue<LocalDate> call(TableColumn.CellDataFeatures<ObservableList, LocalDate> param) {
-                        return new SimpleObjectProperty<LocalDate>(LocalDate.parse(param.getValue().get(j).toString()));
-                    }
-                });
-            }
-            tableViewResultado.getColumns().add(root[i]);
-        }
-
-        TableColumn probabilidadeAC = new TableColumn("probabilidade AC");
-        TableColumn probabilidadeNA = new TableColumn("probabilidade NA");
-
-        probabilidadeAC.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
-            @Override
-            public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param
-            ) {
-                return new SimpleDoubleProperty(Double.parseDouble(param.getValue().get(6).toString()));
-            }
-        });
-        probabilidadeNA.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
-            @Override
-            public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param
-            ) {
-                return new SimpleDoubleProperty(Double.parseDouble(param.getValue().get(7).toString()));
-            }
-        });
-        tableViewResultado.getColumns().add(probabilidadeAC);
-        tableViewResultado.getColumns().add(probabilidadeNA);
-        tableViewResultado.setItems(dataM);
-    }
-
-    private void criarEvaluations(int folder, int seed) throws Exception {
-        // TODO Auto-generated method stub
-        setEval(new Evaluation(getScheme()));
-        getEval().crossValidateModel(getJ48(), getScheme(), folder, new Random(seed));
-    }
-
-    private void gerarTabela(ObservableList<ObservableList> data, TableView table) throws Exception {
-        TableColumn[] root = new TableColumn[getScheme().numAttributes()];
-        table.getColumns().clear();
-        data.clear();
-        for (int i = 0; i < getScheme().numAttributes(); i++) {
-            final int j = i;
-            root[i] = new TableColumn(getScheme().attribute(i).name());
-            root[i].setMinWidth(100);
-            root[i].setMinWidth(100);
-            if (getScheme().attribute(i).isNumeric()) {
-                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
-                    @Override
-                    public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param) {
-                        return new SimpleIntegerProperty(Integer.parseInt(param.getValue().get(j).toString()));
-                    }
-                });
-            } else if (getScheme().attribute(i).isNominal()) {
-                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, String>, ObservableValue<String>>() {
-                    @Override
-                    public ObservableValue<String> call(TableColumn.CellDataFeatures<ObservableList, String> param) {
-                        return new SimpleStringProperty(param.getValue().get(j).toString());
-                    }
-                });
-            }
-            table.getColumns().add(root[i]);
-        }
-        for (int i = 0; i < getScheme().numInstances(); i++) {
-            ObservableList<String> row = FXCollections.observableArrayList();
-            for (int j = 0; j < getScheme().numAttributes(); j++) {
-                row.add(getScheme().instance(i).toString(j));
-            }
-            data.add(row);
-        }
-        table.setItems(data);
-    }
-
     public Slider getSlFolder() {
         return slFolder;
     }
@@ -498,11 +524,24 @@ public class FXMLClassificadorController implements Initializable {
         this.probabilidade = probabilidade;
     }
 
-    public J48 getJ48() {
-        return j48;
+    public MultilayerPerceptron getMlp() {
+        return mlp;
     }
 
-    public void setJ48(J48 j48) {
-        this.j48 = j48;
+    public void setMlp(MultilayerPerceptron mlp) {
+        this.mlp = mlp;
     }
+
+    private File selectFileARFF;
+    private ObservableList<ObservableList> data = FXCollections.observableArrayList();
+    private String options;
+    private DataSource source;
+    private Instances scheme;
+    private DenseInstance schemeDense;
+    private Evaluation eval;
+    private double[] probabilidade;
+    private MultilayerPerceptron mlp;
+    private FileChooser fileChooser;
+    private final int NA = 0;
+    private final int AC = 1;
 }
