@@ -241,7 +241,7 @@ public class FXMLClassificadorController implements Initializable {
             };
             ObservableList<String> row = FXCollections.observableArrayList();
             Random rng = new Random();
-            TreeSet<Integer> generated = new TreeSet<Integer>();
+            TreeSet<Integer> generated = new TreeSet<>();
 
             while (generated.size() < 6) {
                 Integer next = rng.nextInt(60) + 1;
@@ -533,7 +533,7 @@ public class FXMLClassificadorController implements Initializable {
     }
 
     private File selectFileARFF;
-    private ObservableList<ObservableList> data = FXCollections.observableArrayList();
+    private final ObservableList<ObservableList> data = FXCollections.observableArrayList();
     private String options;
     private DataSource source;
     private Instances scheme;
