@@ -10,8 +10,10 @@ import java.io.File;
 import java.net.URL;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.ResourceBundle;
@@ -19,10 +21,10 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.Comparator;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
@@ -31,9 +33,11 @@ import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.Pagination;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TableColumn;
@@ -42,7 +46,9 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
 import javafx.scene.control.Tooltip;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
@@ -94,8 +100,6 @@ public class FXMLClassificadorController implements Initializable {
     @FXML
     private TextField txtNumInstances;
     @FXML
-    private TableView tableViewResultado;
-    @FXML
     private TableView tableViewAmostra;
     @FXML
     private ProgressBar pbTreino;
@@ -123,6 +127,8 @@ public class FXMLClassificadorController implements Initializable {
     private TextArea txtAreaClassDetails;
     @FXML
     private TextArea txtAreaCumulativeMarginDistribution;
+    @FXML
+    private Pagination pgResultado;
 
     @FXML
     protected void abrirARFF(ActionEvent event) {
@@ -170,6 +176,8 @@ public class FXMLClassificadorController implements Initializable {
                     setMlp(new MultilayerPerceptron());
                     getMlp().buildClassifier(getScheme());
                     criarEvaluations(Integer.parseInt(txtFolder.getText()), Integer.parseInt(txtSeed.getText()));
+                    setSchemeDense(new DenseInstance(getScheme().numAttributes()));
+                    getSchemeDense().setDataset(getScheme());
                     txtCorreto.setText(String.valueOf(getEval().correct()));
                     txtIncorreto.setText(String.valueOf(getEval().incorrect()));
                     txtKappa.setText(String.valueOf(getEval().kappa()));
@@ -225,12 +233,29 @@ public class FXMLClassificadorController implements Initializable {
 
     @FXML
     protected void sortearDezenas(ActionEvent event) {
+        btnTreinar.setDisable(false);
+        setDataLength(Integer.parseInt(txtQuantidadeJogos.getText()));
+        btnTreinar.setDisable(true);
+
+        if (getDataLength() % rowsPerPage == 0) {
+            pgResultado.setPageCount(getDataLength() / rowsPerPage);
+        } else {
+            pgResultado.setPageCount(getDataLength() / rowsPerPage + 1);
+        }
+
+        tabelaResultado = criarTabela();
+        dataResultado = criarDados();
+
+        pgResultado.setPageFactory(this::criarPagina);
+        pgResultado.setDisable(false);
+    }
+
+    private List<Cartela> criarDados() {
+        // TODO Auto-generated method stub
         int size = Integer.parseInt(txtQuantidadeJogos.getText());
-        ObservableList<ObservableList> dataM = FXCollections.observableArrayList();
-        setSchemeDense(new DenseInstance(getScheme().numAttributes()));
-        getSchemeDense().setDataset(getScheme());
-        dataM.clear();
-        for (int k = 0; k < size; k++) {
+        List<Cartela> dataList = Collections.synchronizedList(new ArrayList<Cartela>(size));
+
+        for (int i = 0; i < size; i++) {
             char[] cartela = new char[]{
                 '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
                 '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
@@ -239,7 +264,9 @@ public class FXMLClassificadorController implements Initializable {
                 '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
                 '?', '?', '?', '?', '?', '?', '?', '?', '?', '?'
             };
-            ObservableList<String> row = FXCollections.observableArrayList();
+            int[] dezenas = new int[6];
+            int idezenas = 0;
+
             Random rng = new Random();
             TreeSet<Integer> generated = new TreeSet<>();
 
@@ -247,17 +274,18 @@ public class FXMLClassificadorController implements Initializable {
                 Integer next = rng.nextInt(60) + 1;
                 generated.add(next);
             }
-
             Set<Integer> escolhidos = generated;
             Iterator<Integer> it = escolhidos.iterator();
+
             while (it.hasNext()) {
                 int number = Integer.parseInt(it.next().toString());
                 cartela[number - 1] = 't';
-                row.add(String.valueOf(number));
+                dezenas[idezenas] = number;
+                idezenas++;
             }
 
-            for (int i = 0; i < cartela.length; i++) {
-                getSchemeDense().setValue(i, cartela[i]);
+            for (int k = 0; k < cartela.length; k++) {
+                getSchemeDense().setValue(k, cartela[k]);
             }
 
             try {
@@ -265,64 +293,54 @@ public class FXMLClassificadorController implements Initializable {
             } catch (Exception ex) {
                 Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
             }
-            row.add(String.valueOf(getProbabilidade()[AC]));
-            row.add(String.valueOf(getProbabilidade()[NA]));
-            dataM.add(row);
+            dataList.add(new Cartela(dezenas[0], dezenas[1], dezenas[2], dezenas[3], dezenas[4], dezenas[5], getProbabilidade()[AC], getProbabilidade()[NA]));
         }
+        Collections.sort(dataList, new Comparator<Cartela>() {
+            @Override
+            public int compare(Cartela o1, Cartela o2) {
+                return o2.getNA().compareTo(o1.getNA());
+            }
+        });
+        return dataList;
+    }
 
+    private TableView<Cartela> criarTabela() {
+        TableView<Cartela> tableViewResultado = new TableView<>();
         tableViewResultado.getColumns().clear();
-        TableColumn[] root = new TableColumn[6];
 
-        for (int i = 0; i < root.length; i++) {
-            final int j = i;
-            int dezena = i + 1;
-            root[i] = new TableColumn("Dezena " + dezena);
-            if (getSchemeDense().attribute(i).isNumeric()) {
-                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
-                    @Override
-                    public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param) {
-                        return new SimpleIntegerProperty(Integer.parseInt(param.getValue().get(j).toString()));
-                    }
-                });
-            } else if (getSchemeDense().attribute(i).isNominal()) {
-                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, String>, ObservableValue<String>>() {
-                    @Override
-                    public ObservableValue<String> call(TableColumn.CellDataFeatures<ObservableList, String> param) {
-                        return new SimpleStringProperty(param.getValue().get(j).toString());
-                    }
-                });
-            } else if (getSchemeDense().attribute(i).isDate()) {
-                root[i].setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, LocalDate>, ObservableValue<LocalDate>>() {
-                    @Override
-                    public ObservableValue<LocalDate> call(TableColumn.CellDataFeatures<ObservableList, LocalDate> param) {
-                        return new SimpleObjectProperty<LocalDate>(LocalDate.parse(param.getValue().get(j).toString()));
-                    }
-                });
-            }
-            tableViewResultado.getColumns().add(root[i]);
-        }
+        TableColumn<Cartela, Integer> dezena_1 = new TableColumn("Dezena 1");
+        dezena_1.setCellValueFactory(new PropertyValueFactory<Cartela, Integer>("d1"));
 
-        TableColumn probabilidadeAC = new TableColumn("AC");
-        TableColumn probabilidadeNA = new TableColumn("NA");
+        TableColumn<Cartela, Integer> dezena_2 = new TableColumn("Dezena 2");
+        dezena_2.setCellValueFactory(new PropertyValueFactory<Cartela, Integer>("d2"));
 
-        probabilidadeAC.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
-            @Override
-            public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param
-            ) {
-                return new SimpleDoubleProperty(Double.parseDouble(param.getValue().get(6).toString()));
-            }
-        });
-        probabilidadeNA.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, Number>, ObservableValue<Number>>() {
-            @Override
-            public ObservableValue<Number> call(TableColumn.CellDataFeatures<ObservableList, Number> param
-            ) {
-                return new SimpleDoubleProperty(Double.parseDouble(param.getValue().get(7).toString()));
-            }
-        });
+        TableColumn<Cartela, Integer> dezena_3 = new TableColumn("Dezena 3");
+        dezena_3.setCellValueFactory(new PropertyValueFactory<Cartela, Integer>("d3"));
 
-        tableViewResultado.getColumns().add(probabilidadeAC);
-        tableViewResultado.getColumns().add(probabilidadeNA);
-        tableViewResultado.setItems(dataM);
+        TableColumn<Cartela, Integer> dezena_4 = new TableColumn("Dezena 4");
+        dezena_4.setCellValueFactory(new PropertyValueFactory<Cartela, Integer>("d4"));
+
+        TableColumn<Cartela, Integer> dezena_5 = new TableColumn("Dezena 5");
+        dezena_5.setCellValueFactory(new PropertyValueFactory<Cartela, Integer>("d5"));
+
+        TableColumn<Cartela, Integer> dezena_6 = new TableColumn("Dezena 6");
+        dezena_6.setCellValueFactory(new PropertyValueFactory<Cartela, Integer>("d6"));
+
+        TableColumn<Cartela, Double> probabilidadeAC = new TableColumn("AC");
+        probabilidadeAC.setCellValueFactory(new PropertyValueFactory<Cartela, Double>("AC"));
+
+        TableColumn<Cartela, Double> probabilidadeNA = new TableColumn("NA");
+        probabilidadeNA.setCellValueFactory(new PropertyValueFactory<Cartela, Double>("NA"));
+
+        tableViewResultado.getColumns().addAll(dezena_1, dezena_2, dezena_3, dezena_4, dezena_5, dezena_6, probabilidadeAC, probabilidadeNA);
+        return tableViewResultado;
+    }
+
+    private Node criarPagina(int pageIndex) {
+        int fromIndex = pageIndex * rowsPerPage;
+        int toIndex = Math.min(fromIndex + rowsPerPage, dataResultado.size());
+        tabelaResultado.setItems(FXCollections.observableArrayList(dataResultado.subList(fromIndex, toIndex)));
+        return new BorderPane(tabelaResultado);
     }
 
     private void criarEvaluations(int folder, int seed) throws Exception {
@@ -379,6 +397,7 @@ public class FXMLClassificadorController implements Initializable {
             gridMain.setDisable(true);
             cbClassificador.setTooltip(new Tooltip("Selecionar o classificador"));
 
+            pgResultado.setDisable(true);
             DecimalFormat decimalFormat = new DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.ENGLISH));
             decimalFormat.setMaximumFractionDigits(0);
 
@@ -461,10 +480,97 @@ public class FXMLClassificadorController implements Initializable {
             });
 
             WebEngine engine = wvWeka.getEngine();
-            engine.load("http://weka.sourceforge.net/doc.stable-3-8/");
+            engine.load("http://loterias.caixa.gov.br/wps/portal/loterias/landing/megasena/");
         } catch (Exception ex) {
             Logger.getLogger(FXMLClassificadorController.class
                     .getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    public static class Cartela {
+
+        private final SimpleIntegerProperty d1;
+        private final SimpleIntegerProperty d2;
+        private final SimpleIntegerProperty d3;
+        private final SimpleIntegerProperty d4;
+        private final SimpleIntegerProperty d5;
+        private final SimpleIntegerProperty d6;
+        private final SimpleDoubleProperty AC;
+        private final SimpleDoubleProperty NA;
+
+        private Cartela(Integer d1, Integer d2, Integer d3, Integer d4, Integer d5, Integer d6, Double AC, Double NA) {
+            this.d1 = new SimpleIntegerProperty(d1);
+            this.d2 = new SimpleIntegerProperty(d2);
+            this.d3 = new SimpleIntegerProperty(d3);
+            this.d4 = new SimpleIntegerProperty(d4);
+            this.d5 = new SimpleIntegerProperty(d5);
+            this.d6 = new SimpleIntegerProperty(d6);
+            this.AC = new SimpleDoubleProperty(AC);
+            this.NA = new SimpleDoubleProperty(NA);
+        }
+
+        public Integer getD1() {
+            return d1.get();
+        }
+
+        public Integer getD2() {
+            return d2.get();
+        }
+
+        public Integer getD3() {
+            return d3.get();
+        }
+
+        public Integer getD4() {
+            return d4.get();
+        }
+
+        public Integer getD5() {
+            return d5.get();
+        }
+
+        public Integer getD6() {
+            return d6.get();
+        }
+
+        public Double getAC() {
+            return AC.get();
+        }
+
+        public Double getNA() {
+            return NA.get();
+        }
+
+        public void setD1(Integer value) {
+            d1.set(value);
+        }
+
+        public void setD2(Integer value) {
+            d2.set(value);
+        }
+
+        public void setD3(Integer value) {
+            d3.set(value);
+        }
+
+        public void setD4(Integer value) {
+            d4.set(value);
+        }
+
+        public void setD5(Integer value) {
+            d5.set(value);
+        }
+
+        public void setD6(Integer value) {
+            d6.set(value);
+        }
+
+        public void setAC(Double value) {
+            AC.set(value);
+        }
+
+        public void setNA(Double value) {
+            NA.set(value);
         }
     }
 
@@ -532,6 +638,14 @@ public class FXMLClassificadorController implements Initializable {
         this.mlp = mlp;
     }
 
+    public int getDataLength() {
+        return dataLength;
+    }
+
+    public void setDataLength(int dataLength) {
+        this.dataLength = dataLength;
+    }
+
     private File selectFileARFF;
     private final ObservableList<ObservableList> data = FXCollections.observableArrayList();
     private String options;
@@ -544,4 +658,8 @@ public class FXMLClassificadorController implements Initializable {
     private FileChooser fileChooser;
     private final int NA = 0;
     private final int AC = 1;
+    private int dataLength = 0;
+    private final static int rowsPerPage = 50;
+    private TableView<Cartela> tabelaResultado;
+    private List<Cartela> dataResultado;
 }

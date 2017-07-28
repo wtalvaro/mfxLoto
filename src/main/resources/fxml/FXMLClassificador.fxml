@@ -12,7 +12,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.collections.FXCollections?>
 
-<AnchorPane id="AnchorPane" fx:id="AnchorPane" styleClass="fxmlclassificador" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="br.com.wta.mfxloto.controller.FXMLClassificadorController">
+<AnchorPane id="AnchorPane" fx:id="AnchorPane" minHeight="900.0" styleClass="fxmlclassificador" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="br.com.wta.mfxloto.controller.FXMLClassificadorController">
     <stylesheets>
         <URL value="@/styles/fxmlclassificador.css" />
     </stylesheets>   
@@ -91,10 +91,6 @@
                                                         <TextField fx:id="txtRelativeAbsoluteError" editable="false" focusTraversable="false" GridPane.columnIndex="3" GridPane.rowIndex="1" />
                                                         <TextField fx:id="txtRootRelativeSquaredError" editable="false" focusTraversable="false" GridPane.columnIndex="3" GridPane.rowIndex="2" />
                                                         <TextField fx:id="txtNumInstances" editable="false" focusTraversable="false" GridPane.columnIndex="3" GridPane.rowIndex="3" />
-                                                        <TableView fx:id="tableViewResultado" GridPane.columnSpan="2147483647" GridPane.hgrow="ALWAYS" GridPane.rowIndex="7" GridPane.vgrow="ALWAYS">
-                                             <columnResizePolicy>
-                                                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
-                                             </columnResizePolicy></TableView>
                                                         <ProgressBar fx:id="pbTreino" maxWidth="1.7976931348623157E308" progress="0.0" GridPane.columnSpan="2147483647" GridPane.rowIndex="4" />
                                                         <TextField fx:id="txtApostaUnidade" GridPane.columnIndex="1" GridPane.rowIndex="5" />
                                                         <Label text="Valor total a pagar (R$)" GridPane.rowIndex="6" />
@@ -103,6 +99,7 @@
                                                         <TextField fx:id="txtTotalPagar" editable="false" focusTraversable="false" GridPane.columnIndex="1" GridPane.rowIndex="6" />
                                                         <Button fx:id="btnFicarMilionario" disable="true" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#sortearDezenas" text="Ficar Milionário" GridPane.columnIndex="2" GridPane.columnSpan="2147483647" GridPane.hgrow="ALWAYS" GridPane.rowIndex="6" />
                                                         <Label text="Quantidade de jogos" GridPane.columnIndex="2" GridPane.rowIndex="5" />
+                                          <Pagination fx:id="pgResultado" maxPageIndicatorCount="0" pageCount="0" GridPane.columnSpan="2147483647" GridPane.hgrow="ALWAYS" GridPane.rowIndex="7" GridPane.vgrow="ALWAYS" />
                                                     </children>
                                                     <columnConstraints>
                                                         <ColumnConstraints halignment="RIGHT" />
@@ -179,7 +176,7 @@
                               </AnchorPane>
                           </content>
                         </Tab>
-                        <Tab text="Weka API">
+                        <Tab text="Página Loteria">
                           <content>
                             <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
                                  <children>
@@ -241,7 +238,7 @@
                         </Menu>
                   <Menu mnemonicParsing="false" text="Gráficos">
                     <items>
-                        <MenuItem fx:id="miROC" mnemonicParsing="false" onAction="#gerarCurva" text="ROC" />
+                        <MenuItem fx:id="miROC" disable="true" mnemonicParsing="false" onAction="#gerarCurva" text="ROC" />
                     </items>
                   </Menu>
                     </menus>
