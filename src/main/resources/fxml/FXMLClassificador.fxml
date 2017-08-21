@@ -233,7 +233,12 @@
                     <menus>
                         <Menu mnemonicParsing="false" text="ARFF">
                             <items>
-                                <MenuItem fx:id="miAbrir" mnemonicParsing="false" onAction="#abrirARFF" text="Abrir" />
+                                <MenuItem fx:id="miAbrir" mnemonicParsing="false" onAction="#abrirARFF" text="Abrir treino" />
+                        <MenuItem fx:id="miTeste" mnemonicParsing="false" text="Abrir teste" />
+                        <SeparatorMenuItem mnemonicParsing="false" />
+                      <MenuItem fx:id="miGerar" mnemonicParsing="false" text="Gerar combinações" />
+                        <SeparatorMenuItem mnemonicParsing="false" />
+                        <MenuItem fx:id="miPrint" mnemonicParsing="false" text="Imprimir" />
                             </items>
                         </Menu>
                   <Menu mnemonicParsing="false" text="Gráficos">
