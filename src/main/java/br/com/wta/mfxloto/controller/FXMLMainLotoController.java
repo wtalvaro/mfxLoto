@@ -5,6 +5,7 @@
  */
 package br.com.wta.mfxloto.controller;
 
+import br.com.wta.mfxloto.model.DefaultResources;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -25,13 +26,11 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.AnchorPane;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils;
-import br.com.wta.mfxloto.model.DefaultResources;
-import javafx.scene.Node;
-import javafx.stage.Modality;
 
 /**
  * FXML Controller class

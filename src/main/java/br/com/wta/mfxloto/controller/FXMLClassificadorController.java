@@ -6,13 +6,19 @@
 package br.com.wta.mfxloto.controller;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.net.URL;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.ResourceBundle;
@@ -20,7 +26,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.List;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -57,6 +62,20 @@ import javafx.stage.FileChooser;
 import javafx.util.Callback;
 import javafx.util.converter.NumberStringConverter;
 import javax.swing.JFrame;
+import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.PDResources;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.graphics.color.PDColor;
+import org.apache.pdfbox.pdmodel.graphics.color.PDColorSpace;
+import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB;
+import org.apache.pdfbox.pdmodel.graphics.color.PDPattern;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.pdmodel.graphics.pattern.PDTilingPattern;
+import org.apache.pdfbox.util.Charsets;
+import org.springframework.core.io.ClassPathResource;
 import weka.classifiers.Evaluation;
 import weka.classifiers.evaluation.ThresholdCurve;
 import weka.classifiers.functions.MultilayerPerceptron;
@@ -101,15 +120,17 @@ public class FXMLClassificadorController implements Initializable {
     @FXML
     private TextField txtNumInstances;
     @FXML
-    private TableView tableViewAmostra;
-    @FXML
-    private ProgressBar pbTreino;
-    @FXML
     private TextField txtApostaUnidade;
     @FXML
     private TextField txtQuantidadeJogos;
     @FXML
     private TextField txtTotalPagar;
+    @FXML
+    private TextField txtImprimir;
+    @FXML
+    private TableView tableViewAmostra;
+    @FXML
+    private ProgressBar pbTreino;
     @FXML
     private AnchorPane AnchorPane;
     @FXML
@@ -122,6 +143,14 @@ public class FXMLClassificadorController implements Initializable {
     private WebView wvWeka;
     @FXML
     private MenuItem miROC;
+    @FXML
+    private MenuItem miAbrirClass;
+    @FXML
+    private MenuItem miSalvarClass;
+    @FXML
+    private MenuItem miAbrirEval;
+    @FXML
+    private MenuItem miSalvarEval;
     @FXML
     private TextArea txtAreaMatrix;
     @FXML
@@ -154,9 +183,100 @@ public class FXMLClassificadorController implements Initializable {
 
                 gerarTabela(data, tableViewAmostra);
                 gridMain.setDisable(false);
+                miAbrirClass.setDisable(false);
             }
         } catch (Exception ex) {
             Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    @FXML
+    protected void abrirModelo(ActionEvent event) {
+        fileChooser = new FileChooser();
+        fileChooser.setTitle("Abrir Modelo");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Model Classifier", "*.model")
+        );
+        selectFileModel = fileChooser.showOpenDialog(AnchorPane.getScene().getWindow());
+        if (selectFileModel != null) {
+            MultilayerPerceptron newMLP;
+            try {
+                newMLP = (MultilayerPerceptron) weka.core.SerializationHelper.read(selectFileModel.getAbsolutePath());
+                setMlp(newMLP);
+                miAbrirEval.setDisable(false);
+            } catch (Exception ex) {
+                Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+
+    @FXML
+    protected void abrirEvaluation(ActionEvent event) {
+        fileChooser = new FileChooser();
+        fileChooser.setTitle("Abrir Modelo");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Evaluation Classifier", "*.eval")
+        );
+        selectFileEval = fileChooser.showOpenDialog(AnchorPane.getScene().getWindow());
+        if (selectFileEval != null) {
+            Evaluation newEval;
+            try {
+                newEval = (Evaluation) weka.core.SerializationHelper.read(selectFileEval.getAbsolutePath());
+                setEval(newEval);
+                setSchemeDense(new DenseInstance(getScheme().numAttributes()));
+                getSchemeDense().setDataset(getScheme());
+                txtCorreto.setText(String.valueOf(getEval().correct()));
+                txtIncorreto.setText(String.valueOf(getEval().incorrect()));
+                txtKappa.setText(String.valueOf(getEval().kappa()));
+                txtMeanAbsoluteError.setText(String.valueOf(getEval().meanAbsoluteError()));
+                txtRootMeanSquaredError.setText(String.valueOf(getEval().rootMeanSquaredError()));
+                txtRootRelativeSquaredError.setText(String.valueOf(getEval().rootRelativeSquaredError()));
+                txtRelativeAbsoluteError.setText(String.valueOf(getEval().relativeAbsoluteError()));
+                txtNumInstances.setText(String.valueOf(getEval().numInstances()));
+                txtAreaMatrix.setText(getEval().toMatrixString());
+                txtAreaClassDetails.setText(getEval().toClassDetailsString());
+                txtAreaCumulativeMarginDistribution.setText(getEval().toCumulativeMarginDistributionString());
+            } catch (Exception ex) {
+                Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            btnFicarMilionario.setDisable(false);
+            miROC.setDisable(false);
+        }
+    }
+
+    @FXML
+    protected void salvarModelo(ActionEvent event) {
+        fileChooser = new FileChooser();
+        fileChooser.setTitle("Salvar Modelo");
+        fileChooser.setInitialFileName("model_" + txtFolder.getText() + ".model");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Model Classifier", "*.model")
+        );
+        saveFileModel = fileChooser.showSaveDialog(AnchorPane.getScene().getWindow());
+        if (saveFileModel != null) {
+            try {
+                weka.core.SerializationHelper.write(saveFileModel.getAbsolutePath(), getMlp());
+            } catch (Exception ex) {
+                Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+
+    @FXML
+    protected void salvarEvaluation(ActionEvent event) {
+        fileChooser = new FileChooser();
+        fileChooser.setTitle("Salvar Evaluation");
+        fileChooser.setInitialFileName("evaluation_" + txtFolder.getText() + ".eval");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Evaluation Classifier", "*.eval")
+        );
+        saveFileEval = fileChooser.showSaveDialog(AnchorPane.getScene().getWindow());
+        if (saveFileEval != null) {
+            try {
+                weka.core.SerializationHelper.write(saveFileEval.getAbsolutePath(), getEval());
+            } catch (Exception ex) {
+                Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
     }
 
@@ -195,9 +315,11 @@ public class FXMLClassificadorController implements Initializable {
                     txtFolder.setDisable(false);
                     slFolder.setDisable(false);
                     slSeed.setDisable(false);
-                    btnFicarMilionario.setDisable(false);
                     btnTreinar.setDisable(false);
+                    btnFicarMilionario.setDisable(false);
                     miROC.setDisable(false);
+                    miSalvarClass.setDisable(false);
+                    miSalvarEval.setDisable(false);
                     updateProgress(0, 0);
                     return null;
                 }
@@ -210,7 +332,90 @@ public class FXMLClassificadorController implements Initializable {
     }
 
     @FXML
-    protected void gerarCurva(ActionEvent event) {
+    protected void printCartela(ActionEvent event) {
+        try (PDDocument doc = new PDDocument()) {
+            int X = 0;
+            int Y = 0;
+            File folder = new ClassPathResource("images").getFile();
+            File[] files = folder.listFiles();
+            File image = null;
+            for (int i = 0; i < files.length; i++) {
+                String nome = files[i].getName();
+                if (nome.equals("volante.jpg")) {
+                    image = files[i];
+                }
+            }
+            PDImageXObject pdImage = PDImageXObject.createFromFile(image.getAbsolutePath(), doc);
+            ArrayList<CartelaClassificada> iterator = new ArrayList<>(dataResultado);
+            int size = Integer.parseInt(txtImprimir.getText());
+            int numeroAtual = 0;
+            for (int i = 0; i < size / 2; i++) {
+                PDPage page = new PDPage(PDRectangle.A4);
+                page.setResources(new PDResources());
+                PDPageContentStream contents = new PDPageContentStream(doc, page, PDPageContentStream.AppendMode.APPEND, true);
+                contents.setNonStrokingColor(Color.BLACK);
+                //contents.saveGraphicsState();
+                //contents.drawImage(pdImage, 0, 0, PDRectangle.A4.getWidth(), PDRectangle.A4.getHeight());
+                //contents.restoreGraphicsState();
+                for (int j = 0; j < 2; j++) {
+                    CartelaClassificada cc = iterator.get(numeroAtual);
+                    if (numeroAtual % 2 == 0) {
+                        X = volante1[cc.getD1() - 1][0];
+                        Y = volante1[cc.getD1() - 1][1];
+                        contents.addRect(X, Y, 10, 6);
+                        X = volante1[cc.getD2() - 1][0];
+                        Y = volante1[cc.getD2() - 1][1];
+                        contents.addRect(X, Y, 10, 6);
+                        X = volante1[cc.getD3() - 1][0];
+                        Y = volante1[cc.getD3() - 1][1];
+                        contents.addRect(X, Y, 10, 6);
+                        X = volante1[cc.getD4() - 1][0];
+                        Y = volante1[cc.getD4() - 1][1];
+                        contents.addRect(X, Y, 10, 6);
+                        X = volante1[cc.getD5() - 1][0];
+                        Y = volante1[cc.getD5() - 1][1];
+                        contents.addRect(X, Y, 10, 6);
+                        X = volante1[cc.getD6() - 1][0];
+                        Y = volante1[cc.getD6() - 1][1];
+                        contents.addRect(X, Y, 10, 6);
+                        numeroAtual++;
+                    } else {
+                        X = volante2[cc.getD1() - 1][0];
+                        Y = volante2[cc.getD1() - 1][1];
+                        contents.addRect(X, Y, 10, 6);
+                        X = volante2[cc.getD2() - 1][0];
+                        Y = volante2[cc.getD2() - 1][1];
+                        contents.addRect(X, Y, 10, 6);
+                        X = volante2[cc.getD3() - 1][0];
+                        Y = volante2[cc.getD3() - 1][1];
+                        contents.addRect(X, Y, 10, 6);
+                        X = volante2[cc.getD4() - 1][0];
+                        Y = volante2[cc.getD4() - 1][1];
+                        contents.addRect(X, Y, 10, 6);
+                        X = volante2[cc.getD5() - 1][0];
+                        Y = volante2[cc.getD5() - 1][1];
+                        contents.addRect(X, Y, 10, 6);
+                        X = volante2[cc.getD6() - 1][0];
+                        Y = volante2[cc.getD6() - 1][1];
+                        contents.addRect(X, Y, 10, 6);
+                        numeroAtual++;
+                    }
+                }
+                contents.addRect(397, 172, 10, 6);
+                contents.fill();
+                page.setRotation(180);
+                doc.addPage(page);
+                contents.close();
+            }
+            doc.save("D:\\w_tel\\OneDrive\\Documentos\\Megasena\\teste.pdf");
+        } catch (IOException ex) {
+            Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    @FXML
+    protected void gerarCurva(ActionEvent event
+    ) {
         try {
             ThresholdCurve tc = new ThresholdCurve();
             int classIndex = 0;
@@ -447,6 +652,10 @@ public class FXMLClassificadorController implements Initializable {
             txtQuantidadeJogos.setTextFormatter(formatterQuantidade);
             txtQuantidadeJogos.setText("0");
 
+            TextFormatter formatterImprimir = new TextFormatter(new NumberStringConverter(decimalFormat));
+            txtImprimir.setTextFormatter(formatterImprimir);
+            txtImprimir.setText("2");
+
             TextFormatter formatterTotal = new TextFormatter(new NumberStringConverter(decimalFormatUnidade));
             txtTotalPagar.setTextFormatter(formatterTotal);
             txtTotalPagar.setText("0");
@@ -515,6 +724,249 @@ public class FXMLClassificadorController implements Initializable {
 
             WebEngine engine = wvWeka.getEngine();
             engine.load("http://loterias.caixa.gov.br/wps/portal/loterias/landing/megasena/");
+
+            volante1[0][0] = 397;
+            volante1[0][1] = 321;
+            volante1[1][0] = 415;
+            volante1[1][1] = 321;
+            volante1[2][0] = 433;
+            volante1[2][1] = 321;
+            volante1[3][0] = 451;
+            volante1[3][1] = 321;
+            volante1[4][0] = 469;
+            volante1[4][1] = 321;
+            volante1[5][0] = 487;
+            volante1[5][1] = 321;
+            volante1[6][0] = 505;
+            volante1[6][1] = 321;
+            volante1[7][0] = 523;
+            volante1[7][1] = 321;
+            volante1[8][0] = 541;
+            volante1[8][1] = 321;
+            volante1[9][0] = 559;
+            volante1[9][1] = 321;
+            volante1[10][0] = 397;
+            volante1[10][1] = 311;
+            volante1[11][0] = 415;
+            volante1[11][1] = 311;
+            volante1[12][0] = 433;
+            volante1[12][1] = 311;
+            volante1[13][0] = 451;
+            volante1[13][1] = 311;
+            volante1[14][0] = 469;
+            volante1[14][1] = 311;
+            volante1[15][0] = 487;
+            volante1[15][1] = 311;
+            volante1[16][0] = 505;
+            volante1[16][1] = 311;
+            volante1[17][0] = 523;
+            volante1[17][1] = 311;
+            volante1[18][0] = 541;
+            volante1[18][1] = 311;
+            volante1[19][0] = 559;
+            volante1[19][1] = 311;
+            volante1[20][0] = 397;
+            volante1[20][1] = 301;
+            volante1[21][0] = 415;
+            volante1[21][1] = 301;
+            volante1[22][0] = 433;
+            volante1[22][1] = 301;
+            volante1[23][0] = 451;
+            volante1[23][1] = 301;
+            volante1[24][0] = 469;
+            volante1[24][1] = 301;
+            volante1[25][0] = 487;
+            volante1[25][1] = 301;
+            volante1[26][0] = 505;
+            volante1[26][1] = 301;
+            volante1[27][0] = 523;
+            volante1[27][1] = 301;
+            volante1[28][0] = 541;
+            volante1[28][1] = 301;
+            volante1[29][0] = 559;
+            volante1[29][1] = 301;
+            volante1[30][0] = 397;
+            volante1[30][1] = 292;
+            volante1[31][0] = 415;
+            volante1[31][1] = 292;
+            volante1[32][0] = 433;
+            volante1[32][1] = 292;
+            volante1[33][0] = 450;
+            volante1[33][1] = 292;
+            volante1[34][0] = 469;
+            volante1[34][1] = 292;
+            volante1[35][0] = 487;
+            volante1[35][1] = 292;
+            volante1[36][0] = 505;
+            volante1[36][1] = 292;
+            volante1[37][0] = 523;
+            volante1[37][1] = 292;
+            volante1[38][0] = 541;
+            volante1[38][1] = 292;
+            volante1[39][0] = 559;
+            volante1[39][1] = 292;
+            volante1[40][0] = 397;
+            volante1[40][1] = 283;
+            volante1[41][0] = 415;
+            volante1[41][1] = 283;
+            volante1[42][0] = 433;
+            volante1[42][1] = 283;
+            volante1[43][0] = 451;
+            volante1[43][1] = 283;
+            volante1[44][0] = 469;
+            volante1[44][1] = 283;
+            volante1[45][0] = 487;
+            volante1[45][1] = 283;
+            volante1[46][0] = 505;
+            volante1[46][1] = 283;
+            volante1[47][0] = 523;
+            volante1[47][1] = 283;
+            volante1[48][0] = 541;
+            volante1[48][1] = 283;
+            volante1[49][0] = 559;
+            volante1[49][1] = 283;
+            volante1[50][0] = 397;
+            volante1[50][1] = 273;
+            volante1[51][0] = 415;
+            volante1[51][1] = 273;
+            volante1[52][0] = 433;
+            volante1[52][1] = 273;
+            volante1[53][0] = 451;
+            volante1[53][1] = 273;
+            volante1[54][0] = 469;
+            volante1[54][1] = 273;
+            volante1[55][0] = 487;
+            volante1[55][1] = 273;
+            volante1[56][0] = 505;
+            volante1[56][1] = 273;
+            volante1[57][0] = 523;
+            volante1[57][1] = 273;
+            volante1[58][0] = 541;
+            volante1[58][1] = 273;
+            volante1[59][0] = 559;
+            volante1[59][1] = 273;
+
+            volante2[0][0] = 397;
+            volante2[0][1] = 250;
+            volante2[1][0] = 415;
+            volante2[1][1] = 250;
+            volante2[2][0] = 433;
+            volante2[2][1] = 250;
+            volante2[3][0] = 451;
+            volante2[3][1] = 250;
+            volante2[4][0] = 469;
+            volante2[4][1] = 250;
+            volante2[5][0] = 487;
+            volante2[5][1] = 250;
+            volante2[6][0] = 505;
+            volante2[6][1] = 250;
+            volante2[7][0] = 523;
+            volante2[7][1] = 250;
+            volante2[8][0] = 541;
+            volante2[8][1] = 250;
+            volante2[9][0] = 559;
+            volante2[9][1] = 250;
+            volante2[10][0] = 397;
+            volante2[10][1] = 240;
+            volante2[11][0] = 415;
+            volante2[11][1] = 240;
+            volante2[12][0] = 433;
+            volante2[12][1] = 240;
+            volante2[13][0] = 451;
+            volante2[13][1] = 240;
+            volante2[14][0] = 469;
+            volante2[14][1] = 240;
+            volante2[15][0] = 487;
+            volante2[15][1] = 240;
+            volante2[16][0] = 505;
+            volante2[16][1] = 240;
+            volante2[17][0] = 523;
+            volante2[17][1] = 240;
+            volante2[18][0] = 541;
+            volante2[18][1] = 240;
+            volante2[19][0] = 559;
+            volante2[19][1] = 240;
+            volante2[20][0] = 397;
+            volante2[20][1] = 230;
+            volante2[21][0] = 415;
+            volante2[21][1] = 230;
+            volante2[22][0] = 433;
+            volante2[22][1] = 230;
+            volante2[23][0] = 451;
+            volante2[23][1] = 230;
+            volante2[24][0] = 469;
+            volante2[24][1] = 230;
+            volante2[25][0] = 487;
+            volante2[25][1] = 230;
+            volante2[26][0] = 505;
+            volante2[26][1] = 230;
+            volante2[27][0] = 523;
+            volante2[27][1] = 230;
+            volante2[28][0] = 541;
+            volante2[28][1] = 230;
+            volante2[29][0] = 559;
+            volante2[29][1] = 230;
+            volante2[30][0] = 397;
+            volante2[30][1] = 222;
+            volante2[31][0] = 415;
+            volante2[31][1] = 222;
+            volante2[32][0] = 433;
+            volante2[32][1] = 222;
+            volante2[33][0] = 450;
+            volante2[33][1] = 222;
+            volante2[34][0] = 469;
+            volante2[34][1] = 222;
+            volante2[35][0] = 487;
+            volante2[35][1] = 222;
+            volante2[36][0] = 505;
+            volante2[36][1] = 222;
+            volante2[37][0] = 523;
+            volante2[37][1] = 222;
+            volante2[38][0] = 541;
+            volante2[38][1] = 222;
+            volante2[39][0] = 559;
+            volante2[39][1] = 222;
+            volante2[40][0] = 397;
+            volante2[40][1] = 212;
+            volante2[41][0] = 415;
+            volante2[41][1] = 212;
+            volante2[42][0] = 433;
+            volante2[42][1] = 212;
+            volante2[43][0] = 451;
+            volante2[43][1] = 212;
+            volante2[44][0] = 469;
+            volante2[44][1] = 212;
+            volante2[45][0] = 487;
+            volante2[45][1] = 212;
+            volante2[46][0] = 505;
+            volante2[46][1] = 212;
+            volante2[47][0] = 523;
+            volante2[47][1] = 212;
+            volante2[48][0] = 541;
+            volante2[48][1] = 212;
+            volante2[49][0] = 559;
+            volante2[49][1] = 212;
+            volante2[50][0] = 397;
+            volante2[50][1] = 202;
+            volante2[51][0] = 415;
+            volante2[51][1] = 202;
+            volante2[52][0] = 433;
+            volante2[52][1] = 202;
+            volante2[53][0] = 451;
+            volante2[53][1] = 202;
+            volante2[54][0] = 469;
+            volante2[54][1] = 202;
+            volante2[55][0] = 487;
+            volante2[55][1] = 202;
+            volante2[56][0] = 505;
+            volante2[56][1] = 202;
+            volante2[57][0] = 523;
+            volante2[57][1] = 202;
+            volante2[58][0] = 541;
+            volante2[58][1] = 202;
+            volante2[59][0] = 559;
+            volante2[59][1] = 202;
+
         } catch (Exception ex) {
             Logger.getLogger(FXMLClassificadorController.class
                     .getName()).log(Level.SEVERE, null, ex);
@@ -738,6 +1190,10 @@ public class FXMLClassificadorController implements Initializable {
     }
 
     private File selectFileARFF;
+    private File selectFileModel;
+    private File selectFileEval;
+    private File saveFileModel;
+    private File saveFileEval;
     private final ObservableList<ObservableList> data = FXCollections.observableArrayList();
     private String options;
     private DataSource source;
@@ -753,4 +1209,6 @@ public class FXMLClassificadorController implements Initializable {
     private final static int rowsPerPage = 50;
     private TableView<CartelaClassificada> tabelaResultado;
     private Collection<CartelaClassificada> dataResultado;
+    private int[][] volante1 = new int[60][2];
+    private int[][] volante2 = new int[60][2];
 }

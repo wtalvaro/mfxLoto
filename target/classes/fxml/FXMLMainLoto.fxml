@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.input.*?>
+<?import javafx.scene.image.*?>
+<?import java.lang.*?>
+<?import java.net.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane id="AnchorPane" fx:id="AnchorPane" prefHeight="400.0" prefWidth="600.0" styleClass="mainFxmlClass" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="br.com.wta.mfxloto.controller.FXMLMainLotoController">
+    <stylesheets>
+        <URL value="@/styles/fxmlmainloto.css" />
+    </stylesheets>
+    <children>
+        <BorderPane prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+            <top>
+                <MenuBar BorderPane.alignment="CENTER">
+                    <menus>
+                        <Menu mnemonicParsing="false" text="ARRF">
+                            <items>
+                                <MenuItem fx:id="miAbrir" mnemonicParsing="false" onAction="#abrirARFF" text="Abrir">
+                                    <accelerator>
+                                        <KeyCodeCombination alt="UP" code="O" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
+                                    </accelerator>
+                                </MenuItem>
+                            </items>
+                        </Menu>
+                        <Menu mnemonicParsing="false" onAction="#configClassificador" text="Classificador">
+                            <items>
+                                <MenuItem fx:id="miConfig" mnemonicParsing="false" text="Configurações" />
+                            </items>
+                        </Menu>
+                    </menus>
+                </MenuBar>
+            </top>
+            <center>
+                <TableView fx:id="tableViewARFF" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
+                </TableView>
+            </center>
+        </BorderPane>
+    </children>
+</AnchorPane>
