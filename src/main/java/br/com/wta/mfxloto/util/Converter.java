@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package br.com.wta.mfxloto;
+package br.com.wta.mfxloto.util;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -18,7 +18,7 @@ import org.apache.commons.io.FileUtils;
  *
  * @author w_tel
  */
-public class NewClass {
+public class Converter {
 
     private void gerarCombinacoesArquivo(File folder) {
         File file = new File("D:\\w_tel\\OneDrive\\Documentos\\Megasena\\Comb\\saida.txt");
@@ -49,9 +49,9 @@ public class NewClass {
                     }
                     FileUtils.writeStringToFile(file, sb.toString(), true);
                 } catch (FileNotFoundException ex) {
-                    Logger.getLogger(NewClass.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(Converter.class.getName()).log(Level.SEVERE, null, ex);
                 } catch (IOException ex) {
-                    Logger.getLogger(NewClass.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(Converter.class.getName()).log(Level.SEVERE, null, ex);
                 }
             } else {
                 System.out.println(fileEntry.getName());
@@ -73,9 +73,9 @@ public class NewClass {
                 i++;
             }
         } catch (FileNotFoundException ex) {
-            Logger.getLogger(NewClass.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(Converter.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
-            Logger.getLogger(NewClass.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(Converter.class.getName()).log(Level.SEVERE, null, ex);
         }
         StringBuilder sb = new StringBuilder();
         String nsorteado = "?,";
@@ -102,14 +102,14 @@ public class NewClass {
         try {
             FileUtils.writeStringToFile(file, sb.toString());
         } catch (IOException ex) {
-            Logger.getLogger(NewClass.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(Converter.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
     public static void main(String args[]) {
         //File pathInLine = new File("D:\\w_tel\\OneDrive\\Documentos\\Megasena\\megasena_prototipo.csv");
         File pathOutR = new File("D:\\w_tel\\OneDrive\\Documentos\\Megasena\\Comb");
-        NewClass nc = new NewClass();
+        Converter nc = new Converter();
         //nc.gerarCombinacoesInline(pathInLine);
         nc.gerarCombinacoesArquivo(pathOutR);
     }

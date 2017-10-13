@@ -7,16 +7,19 @@ package br.com.wta.mfxloto.controller;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.print.PrinterException;
+import java.awt.print.PrinterJob;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.net.URL;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -62,20 +65,12 @@ import javafx.stage.FileChooser;
 import javafx.util.Callback;
 import javafx.util.converter.NumberStringConverter;
 import javax.swing.JFrame;
-import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.graphics.color.PDColor;
-import org.apache.pdfbox.pdmodel.graphics.color.PDColorSpace;
-import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB;
-import org.apache.pdfbox.pdmodel.graphics.color.PDPattern;
-import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
-import org.apache.pdfbox.pdmodel.graphics.pattern.PDTilingPattern;
-import org.apache.pdfbox.util.Charsets;
-import org.springframework.core.io.ClassPathResource;
+import org.apache.pdfbox.printing.PDFPageable;
 import weka.classifiers.Evaluation;
 import weka.classifiers.evaluation.ThresholdCurve;
 import weka.classifiers.functions.MultilayerPerceptron;
@@ -151,6 +146,10 @@ public class FXMLClassificadorController implements Initializable {
     private MenuItem miAbrirEval;
     @FXML
     private MenuItem miSalvarEval;
+    @FXML
+    private MenuItem miSalvarCombinacao;
+    @FXML
+    private MenuItem miPrint;
     @FXML
     private TextArea txtAreaMatrix;
     @FXML
@@ -336,16 +335,16 @@ public class FXMLClassificadorController implements Initializable {
         try (PDDocument doc = new PDDocument()) {
             int X = 0;
             int Y = 0;
-            File folder = new ClassPathResource("images").getFile();
-            File[] files = folder.listFiles();
-            File image = null;
-            for (int i = 0; i < files.length; i++) {
-                String nome = files[i].getName();
-                if (nome.equals("volante.jpg")) {
-                    image = files[i];
-                }
-            }
-            PDImageXObject pdImage = PDImageXObject.createFromFile(image.getAbsolutePath(), doc);
+            // File folder = new ClassPathResource("images").getFile();
+            // File[] files = folder.listFiles();
+            // File image = null;
+            // for (int i = 0; i < files.length; i++) {
+            //     String nome = files[i].getName();
+            //     if (nome.equals("volante.jpg")) {
+            //         image = files[i];
+            //     }
+            // }
+            //PDImageXObject pdImage = PDImageXObject.createFromFile(image.getAbsolutePath(), doc);
             ArrayList<CartelaClassificada> iterator = new ArrayList<>(dataResultado);
             int size = Integer.parseInt(txtImprimir.getText());
             int numeroAtual = 0;
@@ -408,7 +407,14 @@ public class FXMLClassificadorController implements Initializable {
                 contents.close();
             }
             doc.save("D:\\w_tel\\OneDrive\\Documentos\\Megasena\\teste.pdf");
+            PrinterJob job = PrinterJob.getPrinterJob();
+            job.setPageable(new PDFPageable(doc));
+            if (job.printDialog()) {
+                job.print();
+            }
         } catch (IOException ex) {
+            Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (PrinterException ex) {
             Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
@@ -439,6 +445,27 @@ public class FXMLClassificadorController implements Initializable {
     }
 
     @FXML
+    protected void salvarCombinacoes(ActionEvent event) {
+        fileChooser = new FileChooser();
+        fileChooser.setTitle("Salvar Combinações");
+        fileChooser.setInitialFileName("Loteria_MegaSena_" + System.currentTimeMillis() + ".data");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Data Object", "*.data")
+        );
+        saveFileDat = fileChooser.showSaveDialog(AnchorPane.getScene().getWindow());
+        if (saveFileDat != null) {
+            try {
+                FileOutputStream fos = new FileOutputStream(saveFileDat.getAbsolutePath());
+                ObjectOutputStream oos = new ObjectOutputStream(fos);
+                oos.writeObject(dataResultado);
+                oos.close();
+            } catch (Exception ex) {
+                Logger.getLogger(FXMLClassificadorController.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+
+    @FXML
     protected void sortearDezenas(ActionEvent event) {
         setDataLength(Integer.parseInt(txtQuantidadeJogos.getText()));
 
@@ -461,6 +488,8 @@ public class FXMLClassificadorController implements Initializable {
                             int toIndex = Math.min(fromIndex + rowsPerPage, dataResultado.size());
                             List<CartelaClassificada> cartelas = new ArrayList<>(dataResultado);
                             tabelaResultado.setItems(FXCollections.observableList(cartelas.subList(fromIndex, toIndex)));
+                            miSalvarCombinacao.setDisable(false);
+                            miPrint.setDisable(false);
                             pgResultado.setDisable(false);
                             btnTreinar.setDisable(false);
                             return new BorderPane(tabelaResultado);
@@ -479,6 +508,8 @@ public class FXMLClassificadorController implements Initializable {
         return new Task<Void>() {
             @Override
             public Void call() throws InterruptedException {
+                miPrint.setDisable(true);
+                miSalvarCombinacao.setDisable(true);
                 btnTreinar.setDisable(true);
                 pgResultado.setDisable(true);
                 dataResultado = criarDados();
@@ -973,16 +1004,16 @@ public class FXMLClassificadorController implements Initializable {
         }
     }
 
-    public static class CartelaClassificada implements Comparable {
+    public static class CartelaClassificada implements Comparable, Serializable {
 
-        private final SimpleIntegerProperty d1;
-        private final SimpleIntegerProperty d2;
-        private final SimpleIntegerProperty d3;
-        private final SimpleIntegerProperty d4;
-        private final SimpleIntegerProperty d5;
-        private final SimpleIntegerProperty d6;
-        private final SimpleDoubleProperty AC;
-        private final SimpleDoubleProperty NA;
+        private final transient SimpleIntegerProperty d1;
+        private final transient SimpleIntegerProperty d2;
+        private final transient SimpleIntegerProperty d3;
+        private final transient SimpleIntegerProperty d4;
+        private final transient SimpleIntegerProperty d5;
+        private final transient SimpleIntegerProperty d6;
+        private final transient SimpleDoubleProperty AC;
+        private final transient SimpleDoubleProperty NA;
 
         private CartelaClassificada(Integer d1, Integer d2, Integer d3, Integer d4, Integer d5, Integer d6, Double AC, Double NA) {
             this.d1 = new SimpleIntegerProperty(d1);
@@ -993,6 +1024,31 @@ public class FXMLClassificadorController implements Initializable {
             this.d6 = new SimpleIntegerProperty(d6);
             this.AC = new SimpleDoubleProperty(AC);
             this.NA = new SimpleDoubleProperty(NA);
+        }
+
+        private void writeObject(ObjectOutputStream oos) throws IOException {
+            oos.defaultWriteObject();
+            oos.writeInt(this.getD1());
+            oos.writeInt(this.getD2());
+            oos.writeInt(this.getD3());
+            oos.writeInt(this.getD4());
+            oos.writeInt(this.getD5());
+            oos.writeInt(this.getD6());
+            oos.writeDouble(this.getAC());
+            oos.writeDouble(this.getNA());
+        }
+
+        private void readObject(ObjectInputStream ois) throws ClassNotFoundException, IOException {
+            ois.defaultReadObject();
+            this.setD1(ois.readInt());
+            this.setD2(ois.readInt());
+            this.setD3(ois.readInt());
+            this.setD4(ois.readInt());
+            this.setD5(ois.readInt());
+            this.setD6(ois.readInt());
+            this.setAC(ois.readDouble());
+            this.setNA(ois.readDouble());
+            
         }
 
         public Integer getD1() {
@@ -1194,6 +1250,7 @@ public class FXMLClassificadorController implements Initializable {
     private File selectFileEval;
     private File saveFileModel;
     private File saveFileEval;
+    private File saveFileDat;
     private final ObservableList<ObservableList> data = FXCollections.observableArrayList();
     private String options;
     private DataSource source;
