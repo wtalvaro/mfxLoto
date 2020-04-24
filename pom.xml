@@ -159,6 +159,24 @@
             <version>4.3.11.RELEASE</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>11</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>11</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-web</artifactId>
+            <version>11</version>
+        </dependency>
+        
         <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-mllib_2.11
         <dependency>
             <groupId>org.apache.spark</groupId>
@@ -205,6 +223,24 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>0.0.4</version>
+                <configuration>
+                    <mainClass>br.com.wta.mfxloto.MainApp</mainClass>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>com.heroku.sdk</groupId>
+                <artifactId>heroku-maven-plugin</artifactId>
+                <version>3.0.2</version>
+                <configuration>
+                    <processTypes>
+                        <web>java $JAVA_OPTS -cp target/classes:target/dependency/* MainApp</web>
+                    </processTypes>
+                </configuration>
             </plugin>
         </plugins>
     </build>
